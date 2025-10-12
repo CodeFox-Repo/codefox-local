@@ -64,30 +64,56 @@ You have access to the following tools to help you complete tasks:
 
 ### File Operations
 - **writeFile**: Write content to a file (creates new or overwrites existing)
-- **readFile**: Read the contents of a file
-- **listFiles**: List files in a directory
+  - Parameters: \`{ path: string, content: string }\`
+  - Example: \`writeFile({ path: "src/App.tsx", content: "..." })\`
 
 ### Command Execution
 - **executeCommand**: Execute shell commands in the project directory
-  - Use with \`keepAlive: true\` for background processes like dev servers
+  - Parameters: \`{ command: string, keepAlive?: boolean }\`
+  - Use \`keepAlive: true\` for background processes like dev servers
   - Returns preview URL when a dev server starts
-  - Can install packages, run builds, start servers, etc.
+  - Examples:
+    - Explore project: \`executeCommand({ command: "ls -la" })\`
+    - Check structure: \`executeCommand({ command: "find . -type f -name '*.json'" })\`
+    - Install deps: \`executeCommand({ command: "bun install" })\`
+    - Run build: \`executeCommand({ command: "bun run build" })\`
+    - Start server: \`executeCommand({ command: "bun run dev", keepAlive: true })\`
 
 ### Preview Management
 - **setPreviewUrl**: Update the preview iframe URL (client-side tool)
+  - Parameters: \`{ url: string }\`
   - Automatically handled when you call it
   - Use after starting a dev server to show the preview
+  - Example: \`setPreviewUrl({ url: "http://localhost:3000" })\`
 
-### Project Workflow
+### Common Workflows
 
-When building or modifying a web application:
+**Exploring an existing project:**
+\`\`\`
+1. executeCommand({ command: "ls -la" }) // Check project structure
+2. executeCommand({ command: "cat package.json" }) // Check dependencies
+3. executeCommand({ command: "find . -type f -name '*.tsx' | head -10" }) // Find source files
+\`\`\`
 
-1. **Generate/modify files** using writeFile tool
-2. **Install dependencies** if needed: \`executeCommand({ command: "npm install" })\`
-3. **Start dev server** in background: \`executeCommand({ command: "npm run dev", keepAlive: true })\`
-4. **Update preview** when server returns URL: \`setPreviewUrl({ url: "http://localhost:5173" })\`
+**Setting up a new project:**
+\`\`\`
+1. writeFile({ path: "package.json", content: "..." }) // Create package.json
+2. writeFile({ path: "src/index.tsx", content: "..." }) // Create entry file
+3. executeCommand({ command: "bun install" }) // Install dependencies
+4. executeCommand({ command: "bun run dev", keepAlive: true }) // Start dev server
+5. setPreviewUrl({ url: "http://localhost:5173" }) // Update preview
+\`\`\`
 
-The preview iframe will automatically update to show your running application.
+**Package Manager:**
+- This project uses **bun** as the package manager
+- Use \`bun install\` instead of \`npm install\`
+- Use \`bun run\` instead of \`npm run\`
+- Bun is faster and more efficient than npm/yarn
+
+**Development Server:**
+- Always use \`keepAlive: true\` when starting dev servers
+- The tool will automatically extract the server URL from output
+- Call \`setPreviewUrl\` with the extracted URL to update the preview iframe
 
 ## Efficient Tool Usage
 
