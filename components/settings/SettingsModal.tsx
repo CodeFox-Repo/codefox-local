@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useTheme } from 'next-themes';
 import { Settings, Sparkles, FolderOpen, Wrench, Eye, EyeOff } from 'lucide-react';
 import { useSettingsStore } from '@/lib/settings-store';
 import {
@@ -59,7 +60,8 @@ function SettingRow({ label, description, children, variant = 'default' }: Setti
 }
 
 function GeneralSettings() {
-  const { theme, setTheme, fontSize, setFontSize } = useSettingsStore();
+  const { theme, setTheme: setThemeInStore } = useTheme();
+  const { fontSize, setFontSize } = useSettingsStore();
 
   return (
     <div className="space-y-0">
@@ -67,7 +69,7 @@ function GeneralSettings() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setTheme('light')}
+            onClick={() => setThemeInStore('light')}
             className={cn(
               "px-3 py-1.5 rounded-md border text-sm transition-colors",
               theme === 'light' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
@@ -77,7 +79,7 @@ function GeneralSettings() {
           </button>
           <button
             type="button"
-            onClick={() => setTheme('dark')}
+            onClick={() => setThemeInStore('dark')}
             className={cn(
               "px-3 py-1.5 rounded-md border text-sm transition-colors",
               theme === 'dark' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
@@ -87,7 +89,7 @@ function GeneralSettings() {
           </button>
           <button
             type="button"
-            onClick={() => setTheme('system')}
+            onClick={() => setThemeInStore('system')}
             className={cn(
               "px-3 py-1.5 rounded-md border text-sm transition-colors",
               theme === 'system' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
@@ -404,7 +406,7 @@ export function SettingsModal() {
           </main>
         </div>
 
-        <div className="flex flex-row justify-end gap-2 px-6 pb-6 pt-4 border-t">
+        <div className="flex flex-row justify-end gap-2 px-6 pb-4 pt-4 border-t">
           <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
             Cancel
           </Button>
