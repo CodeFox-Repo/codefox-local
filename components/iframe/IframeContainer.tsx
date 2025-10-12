@@ -7,14 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useProjectStore } from "@/lib/store";
 
 interface IframeContainerProps {
-  generatedCode: string;
+  generatedCode?: string;
 }
 
-export function IframeContainer({ generatedCode }: IframeContainerProps) {
+export function IframeContainer({ generatedCode = "" }: IframeContainerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [key, setKey] = useState(0);
+  const iframeUrl = useProjectStore((state) => state.iframeUrl);
 
   useEffect(() => {
     if (generatedCode && iframeRef.current) {
@@ -77,7 +79,15 @@ export function IframeContainer({ generatedCode }: IframeContainerProps) {
         </div>
 
         <TabsContent value="preview" className="flex-1 m-0 p-4 overflow-hidden">
-          {generatedCode ? (
+          {iframeUrl ? (
+            <iframe
+              key={key}
+              src={iframeUrl}
+              className="w-full h-full border rounded-lg bg-white"
+              sandbox="allow-scripts allow-same-origin"
+              title="Website Preview"
+            />
+          ) : generatedCode ? (
             <iframe
               key={key}
               ref={iframeRef}

@@ -1,7 +1,9 @@
 import { streamText, convertToModelMessages } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
+import { spawn } from "child_process";
 import { ProjectManager } from "@/lib/project-manager";
+import { CODEFOX_SYSTEM_PROMPT } from "@/lib/prompts";
 
 const projectManager = ProjectManager.getInstance();
 
@@ -10,19 +12,6 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || "",
 });
 
-// System prompt for the AI assistant
-const SYSTEM_PROMPT = `You are an expert full-stack web developer who helps users create modern web applications.
-
-Your role is to build complete, production-ready projects using the provided template.
-
-Guidelines:
-- Use modern best practices (TypeScript, React, Next.js, Tailwind CSS)
-- Write clean, maintainable code
-- Add proper error handling
-- Include helpful comments
-- Explain what you're doing step by step
-
-Use the available tools to make real changes to the project!`;
 
 export async function POST(req: Request) {
   try {
@@ -46,6 +35,22 @@ export async function POST(req: Request) {
 
     // Convert UIMessages to ModelMessages
     const modelMessages = convertToModelMessages(messages);
+
+    // Helper function to extract URL from dev server output
+    const extractUrl = (output: string): string | null => {
+      const patterns = [
+        /Local:\s+(https?:\/\/[^\s]+)/,           // Vite
+        /url:\s+(https?:\/\/[^\s]+)/,             // Next.js
+        /(https?:\/\/localhost:\d+)/,             // Generic
+      ];
+
+      for (const pattern of patterns) {
+        const match = output.match(pattern);
+        if (match) return match[1].replace(/\/$/, ''); // Remove trailing slash
+      }
+
+      return null;
+    };
 
     // TODO: When moving to remote/cloud deployment, these tools should be proxied
     // to a VM sandbox environment for security and isolation. The right panel
@@ -81,18 +86,89 @@ export async function POST(req: Request) {
         },
       },
       executeCommand: {
-        description: "Execute a shell command in the project directory (bun install, npm install, etc.)",
+        description: "Execute a shell command in the project directory. For dev servers (npm run dev), use keepAlive=true to run in background.",
         inputSchema: z.object({
           command: z.string().describe("Shell command to execute"),
+          keepAlive: z.boolean().optional().describe("Keep process running in background (for dev servers)"),
         }),
-        execute: async ({ command }: { command: string }) => {
+        execute: async ({ command, keepAlive = false }: { command: string; keepAlive?: boolean }) => {
           try {
-            const result = await projectManager.executeCommand(projectId, command);
-            return {
-              success: true,
-              stdout: result.stdout,
-              stderr: result.stderr,
-            };
+            if (keepAlive) {
+              // Start dev server in background
+              const projectPath = projectManager.getProjectPath(projectId);
+
+              return new Promise((resolve, reject) => {
+                const proc = spawn(command, {
+                  cwd: projectPath,
+                  shell: true,
+                  detached: true,
+                  stdio: ['ignore', 'pipe', 'pipe'],
+                });
+
+                let output = '';
+
+                // Collect output
+                proc.stdout?.on('data', (data: Buffer) => {
+                  output += data.toString();
+
+                  // Try to extract URL
+                  const url = extractUrl(output);
+                  if (url) {
+                    proc.unref(); // Detach so it keeps running
+                    resolve({
+                      success: true,
+                      stdout: output,
+                      previewUrl: url,
+                      pid: proc.pid,
+                      message: `Dev server started at ${url}`,
+                    });
+                  }
+                });
+
+                proc.stderr?.on('data', (data: Buffer) => {
+                  output += data.toString();
+
+                  const url = extractUrl(output);
+                  if (url) {
+                    proc.unref();
+                    resolve({
+                      success: true,
+                      stdout: output,
+                      previewUrl: url,
+                      pid: proc.pid,
+                      message: `Dev server started at ${url}`,
+                    });
+                  }
+                });
+
+                proc.on('error', (error) => {
+                  reject({
+                    success: false,
+                    error: `Failed to start: ${error.message}`,
+                  });
+                });
+
+                // Timeout - commented out to allow any type of background job
+                // setTimeout(() => {
+                //   if (!extractUrl(output)) {
+                //     proc.kill();
+                //     reject({
+                //       success: false,
+                //       error: 'Server started but no URL found',
+                //       stdout: output.substring(0, 500),
+                //     });
+                //   }
+                // }, timeout);
+              });
+            } else {
+              // Normal execution
+              const result = await projectManager.executeCommand(projectId, command);
+              return {
+                success: true,
+                stdout: result.stdout,
+                stderr: result.stderr,
+              };
+            }
           } catch (error) {
             return {
               success: false,
@@ -100,6 +176,13 @@ export async function POST(req: Request) {
             };
           }
         },
+      },
+      // Client-side tool: setPreviewUrl (no execute function)
+      setPreviewUrl: {
+        description: "Update the preview iframe URL. This is a client-side tool that will be handled by the frontend.",
+        inputSchema: z.object({
+          url: z.string().describe("Preview URL (e.g., http://localhost:5173)"),
+        }),
       },
     };
 
@@ -109,7 +192,7 @@ export async function POST(req: Request) {
         process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-sonnet-4.5"
       ),
       messages: modelMessages,
-      system: SYSTEM_PROMPT,
+      system: CODEFOX_SYSTEM_PROMPT,
       tools,
       temperature: 0.7,
     });

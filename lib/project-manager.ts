@@ -67,6 +67,14 @@ export class ProjectManager {
     return this.projects.get(projectId);
   }
 
+  getProjectPath(projectId: string): string {
+    const project = this.getProject(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    return project.path;
+  }
+
   async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
     const project = this.getProject(projectId);
     if (!project) {

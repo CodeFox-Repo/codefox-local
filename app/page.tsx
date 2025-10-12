@@ -9,7 +9,7 @@ import { ChatContainer } from "@/components/chat/ChatContainer";
 import { IframeContainer } from "@/components/iframe/IframeContainer";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { useProjectStore } from "@/lib/store";
-import { createProject } from "@/lib/client-tools";
+import { createProject, setPreviewUrl } from "@/lib/client-tools";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -29,11 +29,38 @@ export default function Home() {
     []
   );
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, addToolResult, status } = useChat({
     transport,
     onError: (error) => {
       console.error("Chat error:", error);
       toast.error("Failed to send message");
+    },
+    async onToolCall({ toolCall }) {
+      // Check if it's a dynamic tool first for proper type narrowing
+      if (toolCall.dynamic) {
+        return;
+      }
+
+      if (toolCall.toolName === 'setPreviewUrl') {
+        try {
+          const input = toolCall.input as { url: string };
+          await setPreviewUrl(input.url);
+
+          // No await - avoids potential deadlocks
+          addToolResult({
+            tool: 'setPreviewUrl',
+            toolCallId: toolCall.toolCallId,
+            output: { success: true, message: `Preview updated to ${input.url}` },
+          });
+        } catch (err) {
+          addToolResult({
+            tool: 'setPreviewUrl',
+            toolCallId: toolCall.toolCallId,
+            state: 'output-error',
+            errorText: err instanceof Error ? err.message : 'Failed to update preview',
+          });
+        }
+      }
     },
   });
 
@@ -131,7 +158,7 @@ export default function Home() {
             onSubmit={handleSubmit}
           />
         }
-        rightPanel={<IframeContainer generatedCode={""} />}
+        rightPanel={<IframeContainer />}
       />
       <SettingsModal />
     </>

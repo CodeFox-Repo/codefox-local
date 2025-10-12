@@ -1,6 +1,7 @@
-// Client-side helper for project creation
+// Client-side helper for project creation and preview management
 
 import type { ProjectInfo } from './project-manager';
+import { useProjectStore } from './store';
 
 // Create a project via API
 export async function createProject(name: string): Promise<ProjectInfo> {
@@ -21,4 +22,23 @@ export async function createProject(name: string): Promise<ProjectInfo> {
   }
 
   return data.project;
+}
+
+// Set the preview URL in the iframe
+export async function setPreviewUrl(url: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  // Validate URL format (must be localhost)
+  if (!url.match(/^https?:\/\/localhost:\d+/)) {
+    throw new Error('Invalid preview URL format. Must be http://localhost:port');
+  }
+
+  // Update store
+  useProjectStore.getState().setIframeUrl(url);
+
+  return {
+    success: true,
+    message: `Preview URL updated to ${url}`,
+  };
 }
