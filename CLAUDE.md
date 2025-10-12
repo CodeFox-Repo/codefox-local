@@ -1,14 +1,22 @@
-# CodeFox Local - AI 网站生成器
+# CodeFox Local - AI Website Generator
 
-这是一个基于 AI 的本地网站项目生成器，用户可以通过自然语言描述来生成完整的网站代码，并实时预览。
+An AI-powered local website project generator that allows users to create complete website code through natural language descriptions with real-time preview.
 
-## 技术栈
+## Tech Stack
 
-- **框架**: Next.js 15.5.4 (使用 Turbopack)
-- **UI 库**: React 19.1.0
-- **状态管理**: Zustand 5.0.8
+- **Framework**: Next.js 15.5.4 (with Turbopack)
+- **UI Library**: React 19.1.0
+- **State Management**: Zustand 5.0.8
 - **AI SDK**: @ai-sdk/react 2.0.68, @ai-sdk/openai 2.0.49
-- **UI 组件**: Radix UI + Tailwind CSS 4
-- **代码高亮**: react-syntax-highlighter
-- **Markdown 渲染**: react-markdown
-- **包管理器**: bun
+- **UI Components**: Radix UI + Tailwind CSS 4
+- **Code Highlighting**: react-syntax-highlighter
+- **Markdown Rendering**: react-markdown
+- **Package Manager**: bun
+
+## Coding Standards
+
+- **No `any` type**: Avoid using `any` type in the project. Always use explicit types or proper TypeScript generics.
+
+## Development Environment
+
+- **Server is always running on localhost:3000**: The user always has the development server running on `localhost:3000`. If you need to test any page-related functionality, you can use `curl` to make requests.

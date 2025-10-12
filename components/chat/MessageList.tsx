@@ -29,7 +29,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
       <div className="flex items-center justify-center h-full text-muted-foreground">
         <div className="text-center space-y-2">
           <h3 className="text-lg font-semibold">Start a conversation</h3>
-          <p className="text-sm">Describe the website you want to create and I'll help you build it.</p>
+          <p className="text-sm">Describe the website you want to create and I&apos;ll help you build it.</p>
         </div>
       </div>
     );
@@ -38,18 +38,25 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   return (
     <ScrollArea className="h-full">
       <div className="space-y-4 p-4" ref={scrollRef}>
-        {messages.map((message) => (
+        {messages.map((message, index) => {
+          const isLastMessage = index === messages.length - 1;
+          const isStreamingLastAssistant = isLastMessage && message.role === 'assistant' && isLoading;
+
+          return (
+            <ChatMessage
+              key={message.id}
+              role={message.role}
+              content={message.content}
+              isLoading={isStreamingLastAssistant}
+            />
+          );
+        })}
+        {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
           <ChatMessage
-            key={message.id}
-            role={message.role}
-            content={message.content}
+            role="assistant"
+            content=""
+            isLoading={true}
           />
-        ))}
-        {isLoading && (
-          <div className="flex items-center gap-2 p-4">
-            <Spinner className="h-4 w-4" />
-            <span className="text-sm text-muted-foreground">Thinking...</span>
-          </div>
         )}
         <div ref={bottomRef} />
       </div>

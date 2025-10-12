@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -12,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeFox Local - AI Chat with Web Preview",
-  description: "Local AI-powered chat assistant with integrated web browser. Built with Next.js and Claude Sonnet 4.5",
+  title: "CodeFox Local - Website Generator",
+  description: "AI-powered website generator using Next.js and Claude",
 };
 
 export default function RootLayout({
@@ -27,6 +29,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Toaster />
       </body>
     </html>
   );

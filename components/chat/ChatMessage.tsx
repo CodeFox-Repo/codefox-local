@@ -2,17 +2,16 @@
 
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { User, Bot, Loader2 } from "lucide-react";
+import { Response } from "@/components/ai-elements/response";
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
+  isLoading?: boolean;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, isLoading = false }: ChatMessageProps) {
   const isUser = role === 'user';
 
   return (
@@ -29,33 +28,19 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       </Avatar>
 
       <div className="flex-1 overflow-hidden space-y-2">
-        <div className="font-semibold text-sm">
+        <div className="font-semibold text-sm flex items-center gap-2">
           {isUser ? "You" : "Assistant"}
+          {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
         </div>
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown
-            components={{
-              code({ node, inline, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={oneDark}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              }
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+          {isLoading && !content ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Thinking...</span>
+            </div>
+          ) : (
+            <Response>{content}</Response>
+          )}
         </div>
       </div>
     </div>

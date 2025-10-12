@@ -1,75 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { IframeContainer } from "@/components/iframe/IframeContainer";
+import { useProjectStore } from "@/lib/store";
+import { createProject } from "@/lib/client-tools";
+import { toast } from "sonner";
 
 export default function Home() {
   const [input, setInput] = useState("");
-  const [generatedCode, setGeneratedCode] = useState("");
+  const [isInitializing, setIsInitializing] = useState(false);
+  const { currentProject, setCurrentProject } = useProjectStore();
+
+  // Create transport with dynamic projectId using body function
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport<UIMessage>({
+        api: "/api/chat",
+        body: () => ({
+          projectId: useProjectStore.getState().currentProject?.id,
+        }),
+      }),
+    []
+  );
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-    }),
+    transport,
     onError: (error) => {
       console.error("Chat error:", error);
+      toast.error("Failed to send message");
     },
   });
-
-  // Extract generated code from messages
-  useEffect(() => {
-    // Look for code in the latest assistant message
-    const lastAssistantMessage = [...messages]
-      .reverse()
-      .find((msg) => msg.role === "assistant");
-
-    if (lastAssistantMessage) {
-      const content = lastAssistantMessage.parts
-        .filter((part) => part.type === "text")
-        .map((part) => {
-          if (part.type === "text") {
-            return (part as { type: "text"; text: string }).text;
-          }
-          return "";
-        })
-        .join("");
-
-      // Extract code between markers
-      const codeMatch = content.match(
-        /<!-- GENERATED_CODE_START -->([\s\S]*?)<!-- GENERATED_CODE_END -->/
-      );
-
-      if (codeMatch && codeMatch[1]) {
-        setGeneratedCode(codeMatch[1].trim());
-      }
-    }
-  }, [messages]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
   };
 
-  const handleSubmit = (value: string) => {
-    if (!value.trim() || status === "streaming") return;
+  const handleSubmit = async (value: string) => {
+    if (!value.trim() || status === "streaming" || isInitializing) {
+      return;
+    }
 
-    // Send message using AI SDK v5 API
-    sendMessage({
-      role: "user",
-      parts: [
-        {
-          type: "text",
-          text: value.trim(),
-        },
-      ],
-    });
+    // Check if this is the first message (project not created yet)
+    const isFirstMessage = messages.length === 0 && !currentProject;
 
-    // Clear input
-    setInput("");
+    if (isFirstMessage) {
+      // Initialize project first
+      setIsInitializing(true);
+      try {
+        toast.info("Initializing project...");
+        const project = await createProject(`website-${Date.now()}`);
+        setCurrentProject(project);
+        toast.success("Project initialized!");
+
+        // Now send the message after project is created
+        sendMessage({
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: value.trim(),
+            },
+          ],
+        });
+
+        // Clear input
+        setInput("");
+      } catch (error) {
+        console.error("Failed to create project:", error);
+        toast.error("Failed to initialize project");
+      } finally {
+        setIsInitializing(false);
+      }
+    } else {
+      // Project already exists, just send the message
+      if (!currentProject) {
+        toast.error("Project not initialized yet");
+        return;
+      }
+
+      sendMessage({
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: value.trim(),
+          },
+        ],
+      });
+
+      // Clear input
+      setInput("");
+    }
   };
 
   const isLoading = status === "streaming";
@@ -93,17 +119,19 @@ export default function Home() {
     }));
 
   return (
-    <MainLayout
-      leftPanel={
-        <ChatContainer
-          messages={convertedMessages}
-          input={input}
-          isLoading={isLoading}
-          onInputChange={handleInputChange}
-          onSubmit={handleSubmit}
-        />
-      }
-      rightPanel={<IframeContainer generatedCode={generatedCode} />}
-    />
+    <>
+      <MainLayout
+        leftPanel={
+          <ChatContainer
+            messages={convertedMessages}
+            input={input}
+            isLoading={isLoading}
+            onInputChange={handleInputChange}
+            onSubmit={handleSubmit}
+          />
+        }
+        rightPanel={<IframeContainer generatedCode={""} />}
+      />
+    </>
   );
 }

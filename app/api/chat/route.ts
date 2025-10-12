@@ -1,56 +1,32 @@
 import { streamText, convertToModelMessages } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { z } from "zod";
+import { ProjectManager } from "@/lib/project-manager";
+
+const projectManager = ProjectManager.getInstance();
 
 // Create OpenRouter client
-const openrouter = createOpenAI({
+const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || "",
-  baseURL: "https://openrouter.ai/api/v1",
 });
 
 // System prompt for the AI assistant
-const SYSTEM_PROMPT = `You are an expert web developer and designer who helps users create beautiful, functional websites.
+const SYSTEM_PROMPT = `You are an expert full-stack web developer who helps users create modern web applications.
 
-Your primary role is to generate complete, self-contained HTML websites based on user descriptions.
+Your role is to build complete, production-ready projects using the provided template.
 
 Guidelines:
-1. When users describe a website they want, generate complete HTML code with:
-   - Modern, responsive design using Tailwind CSS (via CDN)
-   - Inline styles and JavaScript when needed
-   - Clean, semantic HTML structure
-   - Professional and visually appealing design
+- Use modern best practices (TypeScript, React, Next.js, Tailwind CSS)
+- Write clean, maintainable code
+- Add proper error handling
+- Include helpful comments
+- Explain what you're doing step by step
 
-2. Wrap ALL generated HTML code with special markers:
-   \`\`\`html
-   <!-- GENERATED_CODE_START -->
-   <!DOCTYPE html>
-   <html lang="en">
-   <head>
-       <meta charset="UTF-8">
-       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Your Title</title>
-       <script src="https://cdn.tailwindcss.com"></script>
-   </head>
-   <body>
-       <!-- Your content here -->
-   </body>
-   </html>
-   <!-- GENERATED_CODE_END -->
-   \`\`\`
-
-3. ALWAYS include the <!-- GENERATED_CODE_START --> and <!-- GENERATED_CODE_END --> markers
-   so the code can be extracted and displayed in the preview pane.
-
-4. Make websites interactive, beautiful, and fully functional.
-
-5. Explain what you've created and any special features.
-
-6. Be ready to iterate and modify the website based on user feedback.
-
-Remember: Every HTML document you generate MUST be wrapped with the GENERATED_CODE_START/END markers!`;
+Use the available tools to make real changes to the project!`;
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, projectId } = await req.json();
 
     // Validate API key
     if (!process.env.OPENROUTER_API_KEY) {
@@ -60,24 +36,86 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validate project ID
+    if (!projectId) {
+      return new Response(
+        JSON.stringify({ error: "Project ID is required" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Convert UIMessages to ModelMessages
     const modelMessages = convertToModelMessages(messages);
 
-    // Stream the response
+    // TODO: When moving to remote/cloud deployment, these tools should be proxied
+    // to a VM sandbox environment for security and isolation. The right panel
+    // should connect to the sandbox's dev server instead of localhost.
+    //
+    // Architecture for remote deployment:
+    // 1. User request → Chat API
+    // 2. Chat API → VM Sandbox Proxy
+    // 3. VM Sandbox executes tools (writeFile, executeCommand)
+    // 4. Right panel iframe → VM Sandbox dev server (e.g., https://sandbox-{id}.example.com)
+    //
+    // For now, these tools execute on the local server where the app is running.
+    const tools = {
+      writeFile: {
+        description: "Write content to a file in the project. Creates directories if needed.",
+        inputSchema: z.object({
+          filePath: z.string().describe("Path to the file (relative to project root)"),
+          content: z.string().describe("Content to write to the file"),
+        }),
+        execute: async ({ filePath, content }: { filePath: string; content: string }) => {
+          try {
+            await projectManager.writeFile(projectId, filePath, content);
+            return {
+              success: true,
+              message: `File ${filePath} written successfully`,
+            };
+          } catch (error) {
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+      },
+      executeCommand: {
+        description: "Execute a shell command in the project directory (bun install, npm install, etc.)",
+        inputSchema: z.object({
+          command: z.string().describe("Shell command to execute"),
+        }),
+        execute: async ({ command }: { command: string }) => {
+          try {
+            const result = await projectManager.executeCommand(projectId, command);
+            return {
+              success: true,
+              stdout: result.stdout,
+              stderr: result.stderr,
+            };
+          } catch (error) {
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+      },
+    };
+
+    // Stream the response with tools
     const result = streamText({
-      model: openrouter(
-        process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-3.5-sonnet"
+      model: openrouter.chat(
+        process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-sonnet-4.5"
       ),
       messages: modelMessages,
       system: SYSTEM_PROMPT,
+      tools,
       temperature: 0.7,
-      maxTokens: 4096,
     });
 
     // Return UIMessage stream response (AI SDK v5)
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-    });
+    return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response(
