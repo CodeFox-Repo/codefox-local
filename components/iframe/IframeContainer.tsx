@@ -1,183 +1,139 @@
 "use client";
 
-import { useState } from "react";
-import { RefreshCw, ExternalLink, Globe, AlertCircle, ArrowRight } from "lucide-react";
-import { isValidURL, cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import { RefreshCw, ExternalLink, Code, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface IframeContainerProps {
-  url: string;
-  onUrlChange: (url: string) => void;
+  generatedCode: string;
 }
 
-export function IframeContainer({ url, onUrlChange }: IframeContainerProps) {
-  const [inputUrl, setInputUrl] = useState(url);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function IframeContainer({ generatedCode }: IframeContainerProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [key, setKey] = useState(0);
 
-  const handleUrlSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputUrl.trim()) return;
-
-    let finalUrl = inputUrl.trim();
-
-    // Add protocol if missing
-    if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
-      finalUrl = "https://" + finalUrl;
+  useEffect(() => {
+    if (generatedCode && iframeRef.current) {
+      const iframeDoc = iframeRef.current.contentDocument;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(generatedCode);
+        iframeDoc.close();
+      }
     }
+  }, [generatedCode, key]);
 
-    if (isValidURL(finalUrl)) {
-      setError(null);
-      onUrlChange(finalUrl);
-    } else {
-      setError("Invalid URL format");
-    }
+  const handleRefresh = () => {
+    setKey(prev => prev + 1);
   };
 
-  const handleReload = () => {
-    if (url) {
-      setIsLoading(true);
-      // Trigger reload by changing key
-      onUrlChange(url + "?reload=" + Date.now());
+  const handleOpenInNewTab = () => {
+    if (generatedCode) {
+      const blob = new Blob([generatedCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
     }
-  };
-
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-    setError(null);
-  };
-
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setError("Failed to load the URL");
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header with URL controls */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-center size-9 rounded-lg bg-muted">
-          <Globe className="size-4 text-muted-foreground" />
-        </div>
-
-        <form onSubmit={handleUrlSubmit} className="flex-1 flex gap-2">
-          <Input
-            type="text"
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="Enter URL or ask AI to open a website..."
-            className="rounded-xl"
-          />
-          <Button type="submit" size="sm" className="gap-1.5">
-            <ArrowRight />
-            Go
-          </Button>
-        </form>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleReload}
-            disabled={!url}
-            title="Reload"
-          >
-            <RefreshCw className={cn(isLoading && "animate-spin")} />
-          </Button>
-
-          {url && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              asChild
-              title="Open in new tab"
-            >
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink />
-              </a>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <Alert variant="destructive" className="m-4 rounded-xl">
-          <AlertCircle />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* iframe or empty state */}
-      <div className="flex-1 relative bg-white">
-        {url ? (
-          <>
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 backdrop-blur-sm">
-                <div className="flex flex-col items-center gap-3">
-                  <RefreshCw className="size-8 text-primary animate-spin" />
-                  <p className="text-sm text-muted-foreground">Loading website...</p>
-                </div>
-              </div>
-            )}
-            <iframe
-              key={url}
-              src={url}
-              className="w-full h-full border-0"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-              referrerPolicy="no-referrer"
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              title="Preview"
-            />
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full bg-background">
-            <Empty className="border-0">
-              <EmptyHeader>
-                <EmptyMedia variant="icon" className="size-16 mb-2">
-                  <Globe className="size-8" />
-                </EmptyMedia>
-                <EmptyTitle className="text-2xl">Web Preview</EmptyTitle>
-                <EmptyDescription>
-                  Enter a URL above or ask the AI assistant to open a website for you.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <div className="flex flex-row gap-2 justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setInputUrl("google.com");
-                      onUrlChange("https://google.com");
-                    }}
-                  >
-                    🔍 Google
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setInputUrl("github.com");
-                      onUrlChange("https://github.com");
-                    }}
-                  >
-                    💻 GitHub
-                  </Button>
-                </div>
-              </EmptyContent>
-            </Empty>
+      <div className="flex-shrink-0 p-4 border-b">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Preview</h2>
+            <p className="text-sm text-muted-foreground">
+              Live preview of your generated website
+            </p>
           </div>
-        )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={!generatedCode}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenInNewTab}
+              disabled={!generatedCode}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
+
+      <Tabs defaultValue="preview" className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 px-4 pt-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="preview">
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </TabsTrigger>
+            <TabsTrigger value="code">
+              <Code className="h-4 w-4 mr-2" />
+              Code
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="preview" className="flex-1 m-0 p-4 overflow-hidden">
+          {generatedCode ? (
+            <iframe
+              key={key}
+              ref={iframeRef}
+              className="w-full h-full border rounded-lg bg-white"
+              sandbox="allow-scripts allow-same-origin"
+              title="Website Preview"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full border rounded-lg bg-muted/20">
+              <div className="text-center space-y-2 text-muted-foreground">
+                <Code className="h-12 w-12 mx-auto opacity-50" />
+                <h3 className="text-lg font-semibold">No preview available</h3>
+                <p className="text-sm">
+                  Start a conversation to generate a website
+                </p>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="code" className="flex-1 m-0 p-4 overflow-hidden">
+          {generatedCode ? (
+            <ScrollArea className="h-full w-full rounded-lg border">
+              <SyntaxHighlighter
+                language="html"
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              >
+                {generatedCode}
+              </SyntaxHighlighter>
+            </ScrollArea>
+          ) : (
+            <div className="flex items-center justify-center h-full border rounded-lg bg-muted/20">
+              <div className="text-center space-y-2 text-muted-foreground">
+                <Code className="h-12 w-12 mx-auto opacity-50" />
+                <h3 className="text-lg font-semibold">No code generated</h3>
+                <p className="text-sm">
+                  The generated HTML code will appear here
+                </p>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

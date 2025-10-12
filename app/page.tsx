@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
@@ -9,8 +9,8 @@ import { ChatContainer } from "@/components/chat/ChatContainer";
 import { IframeContainer } from "@/components/iframe/IframeContainer";
 
 export default function Home() {
-  const [iframeUrl, setIframeUrl] = useState("");
   const [input, setInput] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -21,18 +21,41 @@ export default function Home() {
     },
   });
 
-  const handleOpenUrl = (url: string) => {
-    setIframeUrl(url);
+  // Extract generated code from messages
+  useEffect(() => {
+    // Look for code in the latest assistant message
+    const lastAssistantMessage = [...messages]
+      .reverse()
+      .find((msg) => msg.role === "assistant");
+
+    if (lastAssistantMessage) {
+      const content = lastAssistantMessage.parts
+        .filter((part) => part.type === "text")
+        .map((part) => {
+          if (part.type === "text") {
+            return (part as { type: "text"; text: string }).text;
+          }
+          return "";
+        })
+        .join("");
+
+      // Extract code between markers
+      const codeMatch = content.match(
+        /<!-- GENERATED_CODE_START -->([\s\S]*?)<!-- GENERATED_CODE_END -->/
+      );
+
+      if (codeMatch && codeMatch[1]) {
+        setGeneratedCode(codeMatch[1].trim());
+      }
+    }
+  }, [messages]);
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!input.trim() || status === 'streaming') return;
+  const handleSubmit = (value: string) => {
+    if (!value.trim() || status === "streaming") return;
 
     // Send message using AI SDK v5 API
     sendMessage({
@@ -40,7 +63,7 @@ export default function Home() {
       parts: [
         {
           type: "text",
-          text: input.trim(),
+          text: value.trim(),
         },
       ],
     });
@@ -49,23 +72,25 @@ export default function Home() {
     setInput("");
   };
 
-  const isLoading = status === 'streaming';
+  const isLoading = status === "streaming";
 
   // Convert UIMessage to our Message type for compatibility
-  const convertedMessages = messages.map((msg: UIMessage) => ({
-    id: msg.id,
-    role: msg.role,
-    content: msg.parts
-      .filter((part) => part.type === "text")
-      .map((part) => {
-        if (part.type === "text") {
-          return (part as { type: "text"; text: string }).text;
-        }
-        return "";
-      })
-      .join(""),
-    createdAt: new Date(),
-  }));
+  const convertedMessages = messages
+    .filter((msg) => msg.role !== "system")
+    .map((msg: UIMessage) => ({
+      id: msg.id,
+      role: msg.role as "user" | "assistant",
+      content: msg.parts
+        .filter((part) => part.type === "text")
+        .map((part) => {
+          if (part.type === "text") {
+            return (part as { type: "text"; text: string }).text;
+          }
+          return "";
+        })
+        .join(""),
+      createdAt: new Date(),
+    }));
 
   return (
     <MainLayout
@@ -76,15 +101,9 @@ export default function Home() {
           isLoading={isLoading}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
-          onOpenUrl={handleOpenUrl}
         />
       }
-      rightPanel={
-        <IframeContainer
-          url={iframeUrl}
-          onUrlChange={setIframeUrl}
-        />
-      }
+      rightPanel={<IframeContainer generatedCode={generatedCode} />}
     />
   );
 }

@@ -1,17 +1,20 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
-import { ChatInput } from "./ChatInput";
 import { MessageList } from "./MessageList";
-import type { Message } from "@/types/chat";
+import { ChatInput } from "./ChatInput";
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface ChatContainerProps {
   messages: Message[];
   input: string;
-  isLoading: boolean;
-  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onOpenUrl?: (url: string) => void;
+  isLoading?: boolean;
+  onInputChange: (value: string) => void;
+  onSubmit: (value: string) => void;
 }
 
 export function ChatContainer({
@@ -19,38 +22,27 @@ export function ChatContainer({
   input,
   isLoading,
   onInputChange,
-  onSubmit,
-  onOpenUrl,
+  onSubmit
 }: ChatContainerProps) {
   return (
-    <div className="flex flex-col h-full bg-[var(--chat-bg)]">
-      {/* Header */}
-      <div className="flex items-center gap-4 px-8 py-5 border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20">
-          <MessageCircle className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-base font-bold text-foreground tracking-tight">CodeFox AI</h2>
-          <p className="text-xs text-gray-500">Powered by Claude Sonnet 4.5</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs text-gray-500">Online</span>
-        </div>
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-shrink-0 p-4 border-b">
+        <h1 className="text-xl font-bold">Website Generator</h1>
+        <p className="text-sm text-muted-foreground">
+          Create beautiful websites with AI assistance
+        </p>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-hidden">
-        <MessageList messages={messages} onOpenUrl={onOpenUrl} />
+        <MessageList messages={messages} isLoading={isLoading} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-800 bg-gray-900/30 backdrop-blur-sm">
+      <div className="flex-shrink-0">
         <ChatInput
-          input={input}
-          isLoading={isLoading}
-          onInputChange={onInputChange}
+          value={input}
+          onChange={onInputChange}
           onSubmit={onSubmit}
+          isLoading={isLoading}
         />
       </div>
     </div>

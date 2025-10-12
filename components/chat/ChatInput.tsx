@@ -1,69 +1,73 @@
 "use client";
 
-import { Send, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Kbd } from "@/components/ui/kbd";
+import { Button } from "@/components/ui/button";
+import { Send } from "lucide-react";
 
 interface ChatInputProps {
-  input: string;
-  isLoading: boolean;
-  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  isLoading?: boolean;
+  placeholder?: string;
 }
 
 export function ChatInput({
-  input,
-  isLoading,
-  onInputChange,
+  value,
+  onChange,
   onSubmit,
+  isLoading,
+  placeholder = "Describe the website you want to create..."
 }: ChatInputProps) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      const form = e.currentTarget.form;
-      if (form) {
-        form.requestSubmit();
-      }
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (value.trim() && !isLoading) {
+      onSubmit(value);
     }
   };
 
-  return (
-    <form onSubmit={onSubmit} className="p-6 border-t border-border">
-      <div className="relative flex items-end gap-2">
-        <Textarea
-          value={input}
-          onChange={onInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Message CodeFox..."
-          disabled={isLoading}
-          rows={1}
-          className={cn(
-            "resize-none rounded-2xl pr-14 min-h-[52px] max-h-[200px]"
-          )}
-        />
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
+      <div className="flex gap-2 items-end">
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className="min-h-[60px] max-h-[200px] resize-none"
+          rows={2}
+        />
         <Button
           type="submit"
+          disabled={!value.trim() || isLoading}
           size="icon"
-          disabled={isLoading || !input.trim()}
-          className="absolute right-2 bottom-2 rounded-xl"
+          className="h-10 w-10 shrink-0"
         >
-          {isLoading ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Send />
-          )}
+          <Send className="h-4 w-4" />
         </Button>
       </div>
-
-      <p className="text-xs text-muted-foreground mt-3 px-1 flex items-center gap-1.5">
-        <span>Press</span>
-        <Kbd>⌘</Kbd>
-        <span>+</span>
-        <Kbd>Enter</Kbd>
-        <span>to send</span>
+      <p className="text-xs text-muted-foreground mt-2">
+        Press Enter to send, Shift + Enter for new line
       </p>
     </form>
   );
