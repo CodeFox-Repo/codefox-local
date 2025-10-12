@@ -7,6 +7,7 @@ import type { UIMessage } from "ai";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { IframeContainer } from "@/components/iframe/IframeContainer";
+import { SettingsModal } from "@/components/settings/SettingsModal";
 import { useProjectStore } from "@/lib/store";
 import { createProject } from "@/lib/client-tools";
 import { toast } from "sonner";
@@ -132,6 +133,7 @@ export default function Home() {
         }
         rightPanel={<IframeContainer generatedCode={""} />}
       />
+      <SettingsModal />
     </>
   );
 }
