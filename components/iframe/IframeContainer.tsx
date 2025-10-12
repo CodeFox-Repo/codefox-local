@@ -41,38 +41,9 @@ export function IframeContainer({ generatedCode }: IframeContainerProps) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-shrink-0 p-4 border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">Preview</h2>
-            <p className="text-sm text-muted-foreground">
-              Live preview of your generated website
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={!generatedCode}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              disabled={!generatedCode}
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <Tabs defaultValue="preview" className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 px-4 pt-4">
-          <TabsList className="grid w-full grid-cols-2">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b">
+          <TabsList>
             <TabsTrigger value="preview">
               <Eye className="h-4 w-4 mr-2" />
               Preview
@@ -82,6 +53,27 @@ export function IframeContainer({ generatedCode }: IframeContainerProps) {
               Code
             </TabsTrigger>
           </TabsList>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={!generatedCode}
+              title="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleOpenInNewTab}
+              disabled={!generatedCode}
+              title="Open in new tab"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="preview" className="flex-1 m-0 p-4 overflow-hidden">

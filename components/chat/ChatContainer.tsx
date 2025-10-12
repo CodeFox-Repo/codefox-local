@@ -31,23 +31,16 @@ export function ChatContainer({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-shrink-0 p-4 border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Website Generator</h1>
-            <p className="text-sm text-muted-foreground">
-              Create beautiful websites with AI assistance
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSettingsOpen(true)}
-            title="Settings"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b">
+        <h1 className="text-base font-semibold">Website Generator</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsSettingsOpen(true)}
+          title="Settings"
+        >
+          <Settings className="h-5 w-5" />
+        </Button>
       </div>
 
       <div className="flex-1 overflow-hidden">
