@@ -128,30 +128,12 @@ export default function Home() {
 
   const isLoading = status === "streaming";
 
-  // Convert UIMessage to our Message type for compatibility
-  const convertedMessages = messages
-    .filter((msg) => msg.role !== "system")
-    .map((msg: UIMessage) => ({
-      id: msg.id,
-      role: msg.role as "user" | "assistant",
-      content: msg.parts
-        .filter((part) => part.type === "text")
-        .map((part) => {
-          if (part.type === "text") {
-            return (part as { type: "text"; text: string }).text;
-          }
-          return "";
-        })
-        .join(""),
-      createdAt: new Date(),
-    }));
-
   return (
     <>
       <MainLayout
         leftPanel={
           <ChatContainer
-            messages={convertedMessages}
+            messages={messages.filter((msg) => msg.role !== "system")}
             input={input}
             isLoading={isLoading}
             onInputChange={handleInputChange}

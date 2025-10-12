@@ -1,9 +1,17 @@
 import { streamText, convertToModelMessages } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { z } from "zod";
 import { spawn } from "child_process";
 import { ProjectManager } from "@/lib/project-manager";
 import { CODEFOX_SYSTEM_PROMPT } from "@/lib/prompts";
+import {
+  defineServerSideTool,
+  defineClientSideTool,
+  writeFileSchema,
+  executeCommandSchema,
+  setPreviewUrlSchema,
+  type WriteFileOutput,
+  type ExecuteCommandOutput,
+} from "@/lib/tool-definitions";
 
 const projectManager = ProjectManager.getInstance();
 
@@ -64,18 +72,15 @@ export async function POST(req: Request) {
     //
     // For now, these tools execute on the local server where the app is running.
     const tools = {
-      writeFile: {
+      writeFile: defineServerSideTool({
         description: "Write content to a file in the project. Creates directories if needed.",
-        inputSchema: z.object({
-          filePath: z.string().describe("Path to the file (relative to project root)"),
-          content: z.string().describe("Content to write to the file"),
-        }),
-        execute: async ({ filePath, content }: { filePath: string; content: string }) => {
+        inputSchema: writeFileSchema,
+        execute: async (input): Promise<WriteFileOutput> => {
           try {
-            await projectManager.writeFile(projectId, filePath, content);
+            await projectManager.writeFile(projectId, input.path, input.content);
             return {
               success: true,
-              message: `File ${filePath} written successfully`,
+              message: `File ${input.path} written successfully`,
             };
           } catch (error) {
             return {
@@ -84,14 +89,12 @@ export async function POST(req: Request) {
             };
           }
         },
-      },
-      executeCommand: {
+      }),
+      executeCommand: defineServerSideTool({
         description: "Execute a shell command in the project directory. For dev servers (npm run dev), use keepAlive=true to run in background.",
-        inputSchema: z.object({
-          command: z.string().describe("Shell command to execute"),
-          keepAlive: z.boolean().optional().describe("Keep process running in background (for dev servers)"),
-        }),
-        execute: async ({ command, keepAlive = false }: { command: string; keepAlive?: boolean }) => {
+        inputSchema: executeCommandSchema,
+        execute: async (input): Promise<ExecuteCommandOutput> => {
+          const { command, keepAlive = false } = input;
           try {
             if (keepAlive) {
               // Start dev server in background
@@ -176,14 +179,12 @@ export async function POST(req: Request) {
             };
           }
         },
-      },
+      }),
       // Client-side tool: setPreviewUrl (no execute function)
-      setPreviewUrl: {
+      setPreviewUrl: defineClientSideTool({
         description: "Update the preview iframe URL. This is a client-side tool that will be handled by the frontend.",
-        inputSchema: z.object({
-          url: z.string().describe("Preview URL (e.g., http://localhost:5173)"),
-        }),
-      },
+        inputSchema: setPreviewUrlSchema,
+      }),
     };
 
     // Stream the response with tools

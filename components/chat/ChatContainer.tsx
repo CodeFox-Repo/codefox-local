@@ -5,15 +5,10 @@ import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/lib/settings-store";
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
+import type { UIMessage } from "ai";
 
 interface ChatContainerProps {
-  messages: Message[];
+  messages: UIMessage[];
   input: string;
   isLoading?: boolean;
   onInputChange: (value: string) => void;
