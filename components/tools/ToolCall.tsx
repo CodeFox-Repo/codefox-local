@@ -58,11 +58,11 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
               </div>
             )}
             {typedOutput.stdout && typeof typedOutput.stdout === 'string' && (
-              <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-32 text-foreground/80">
+              <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-64 text-foreground/80">
 {typedOutput.stdout}</pre>
             )}
             {typedOutput.stderr && typeof typedOutput.stderr === 'string' && (
-              <pre className="text-xs font-mono bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 p-2 rounded border border-red-200 dark:border-red-800 overflow-x-auto max-h-32">
+              <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-64 text-foreground/70">
 {typedOutput.stderr}</pre>
             )}
             {typedOutput.error && typeof typedOutput.error === 'string' && (

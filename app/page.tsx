@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
@@ -15,7 +15,16 @@ import { toast } from "sonner";
 export default function Home() {
   const [input, setInput] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
-  const { currentProject, setCurrentProject } = useProjectStore();
+
+  // Subscribe to specific fields from store to trigger re-renders
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
+  const storedMessages = useProjectStore((state) => state.messages);
+  const storedIframeUrl = useProjectStore((state) => state.iframeUrl);
+  const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
+  const setCurrentProject = useProjectStore((state) => state.setCurrentProject);
+  const saveMessages = useProjectStore((state) => state.setMessages);
+
+  const currentProject = getCurrentProject();
 
   // Create transport with dynamic projectId using body function
   const transport = useMemo(
@@ -23,13 +32,13 @@ export default function Home() {
       new DefaultChatTransport<UIMessage>({
         api: "/api/chat",
         body: () => ({
-          projectId: useProjectStore.getState().currentProject?.id,
+          projectId: useProjectStore.getState().getCurrentProject()?.id,
         }),
       }),
     []
   );
 
-  const { messages, sendMessage, addToolResult, status } = useChat({
+  const { messages, sendMessage, addToolResult, status, setMessages: setAIMessages } = useChat({
     transport,
     onError: (error) => {
       console.error("Chat error:", error);
@@ -63,6 +72,26 @@ export default function Home() {
       }
     },
   });
+
+  // Sync messages to store whenever they change
+  useEffect(() => {
+    if (messages.length > 0 && currentProject) {
+      saveMessages(messages);
+    }
+  }, [messages, currentProject, saveMessages]);
+
+  // Restore messages when project switches
+  useEffect(() => {
+    if (!currentProjectId) {
+      setAIMessages([]);
+      return;
+    }
+
+    // Only update if different to avoid loops
+    if (JSON.stringify(storedMessages) !== JSON.stringify(messages)) {
+      setAIMessages(storedMessages);
+    }
+  }, [currentProjectId, storedMessages, messages, setAIMessages]);
 
   const handleInputChange = (value: string) => {
     setInput(value);

@@ -5,6 +5,7 @@ import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/lib/settings-store";
+import { ProjectHistory } from "@/components/project/ProjectHistory";
 import type { UIMessage } from "ai";
 
 interface ChatContainerProps {
@@ -27,7 +28,10 @@ export function ChatContainer({
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b">
-        <h1 className="text-base font-semibold">Website Generator</h1>
+        <div className="flex items-center gap-2">
+          <ProjectHistory />
+          <h1 className="text-base font-semibold">Website Generator</h1>
+        </div>
         <Button
           variant="ghost"
           size="icon"
