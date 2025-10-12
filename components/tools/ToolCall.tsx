@@ -1,5 +1,4 @@
-import { Terminal, FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import type {
   WriteFileInput,
   WriteFileOutput,
@@ -37,48 +36,38 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
 
     // Handle case where input is not yet available (streaming state)
     if (!typedInput.command) {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-blue-500" />
-            <span className="text-sm text-muted-foreground">Executing command...</span>
-          </div>
-        </div>
-      );
+      return <span className="text-muted-foreground">Executing command...</span>;
     }
 
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-blue-500" />
-          <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-            {safeString(typedInput.command)}
-          </code>
+        {/* Command input */}
+        <div className="bg-muted/30 rounded px-3 py-2 border">
+          <code className="text-xs font-mono">{safeString(typedInput.command)}</code>
           {typedInput.keepAlive && (
-            <span className="text-xs text-muted-foreground">(background)</span>
+            <span className="text-xs text-muted-foreground ml-2">(background)</span>
           )}
         </div>
 
+        {/* Output */}
         {hasOutput(output) && (
-          <div className="ml-6 space-y-1">
+          <div className="space-y-1.5">
             {typedOutput.previewUrl && typeof typedOutput.previewUrl === 'string' && (
-              <div className="text-sm text-green-600 dark:text-green-400">
-                ✓ Server started: {typedOutput.previewUrl}
+              <div className="text-xs text-foreground">
+                → Server started: <span className="font-mono">{typedOutput.previewUrl}</span>
               </div>
             )}
             {typedOutput.stdout && typeof typedOutput.stdout === 'string' && (
-              <pre className="text-xs bg-muted p-2 rounded overflow-x-auto max-h-32">
-                {typedOutput.stdout}
-              </pre>
+              <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-32 text-foreground/80">
+{typedOutput.stdout}</pre>
             )}
             {typedOutput.stderr && typeof typedOutput.stderr === 'string' && (
-              <pre className="text-xs bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 p-2 rounded overflow-x-auto max-h-32">
-                {typedOutput.stderr}
-              </pre>
+              <pre className="text-xs font-mono bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 p-2 rounded border border-red-200 dark:border-red-800 overflow-x-auto max-h-32">
+{typedOutput.stderr}</pre>
             )}
             {typedOutput.error && typeof typedOutput.error === 'string' && (
-              <div className="text-sm text-red-600 dark:text-red-400">
-                ✗ Error: {typedOutput.error}
+              <div className="text-xs text-red-600 dark:text-red-400">
+                Error: {typedOutput.error}
               </div>
             )}
           </div>
@@ -93,14 +82,7 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
 
     // Handle case where input is not yet available (streaming state)
     if (!typedInput.content) {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-purple-500" />
-            <span className="text-sm text-muted-foreground">Writing file...</span>
-          </div>
-        </div>
-      );
+      return <span className="text-muted-foreground">Writing file...</span>;
     }
 
     const lines = typedInput.content.split('\n').length;
@@ -108,36 +90,36 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
 
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-purple-500" />
-          <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-            {safeString(typedInput.path)}
-          </code>
-          <span className="text-xs text-muted-foreground">
-            ({lines} lines)
-          </span>
+        {/* File path */}
+        <div className="bg-muted/30 rounded px-3 py-2 border">
+          <code className="text-xs font-mono">{safeString(typedInput.path)}</code>
+          <span className="text-xs text-muted-foreground ml-2">({lines} lines)</span>
         </div>
 
-        {hasOutput(output) && typedOutput.success && (
-          <div className="ml-6 text-sm text-green-600 dark:text-green-400">
-            ✓ File written successfully
+        {/* Status */}
+        {hasOutput(output) && (
+          <div className="space-y-1.5">
+            {typedOutput.success && (
+              <div className="text-xs text-foreground">
+                → File written successfully
+              </div>
+            )}
+            {typedOutput.error && typeof typedOutput.error === 'string' && (
+              <div className="text-xs text-red-600 dark:text-red-400">
+                Error: {typedOutput.error}
+              </div>
+            )}
           </div>
         )}
 
-        {hasOutput(output) && typedOutput.error && typeof typedOutput.error === 'string' && (
-          <div className="ml-6 text-sm text-red-600 dark:text-red-400">
-            ✗ Error: {typedOutput.error}
-          </div>
-        )}
-
-        <details className="ml-6">
-          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-            Show preview
+        {/* Content preview */}
+        <details className="group">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground list-none flex items-center gap-1">
+            <span className="group-open:rotate-90 transition-transform">▶</span>
+            Show content
           </summary>
-          <pre className="text-xs bg-muted p-2 rounded overflow-x-auto max-h-32 mt-1">
-            {preview}
-            {typedInput.content.length > 200 && '\n...'}
-          </pre>
+          <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-32 mt-1.5 text-foreground/80">
+{preview}{typedInput.content.length > 200 && '\n...'}</pre>
         </details>
       </div>
     );
@@ -149,29 +131,20 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
 
     // Handle case where input is not yet available (streaming state)
     if (!typedInput.url) {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-indigo-500" />
-            <span className="text-sm text-muted-foreground">Updating preview...</span>
-          </div>
-        </div>
-      );
+      return <span className="text-muted-foreground">Updating preview...</span>;
     }
 
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-indigo-500" />
-          <span className="text-sm">Preview updated:</span>
-          <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-            {safeString(typedInput.url)}
-          </code>
+        {/* URL */}
+        <div className="bg-muted/30 rounded px-3 py-2 border">
+          <code className="text-xs font-mono">{safeString(typedInput.url)}</code>
         </div>
 
+        {/* Status */}
         {hasOutput(output) && typedOutput.success && typedOutput.message && typeof typedOutput.message === 'string' && (
-          <div className="ml-6 text-sm text-green-600 dark:text-green-400">
-            ✓ {typedOutput.message}
+          <div className="text-xs text-foreground">
+            → {typedOutput.message}
           </div>
         )}
       </div>
@@ -210,19 +183,15 @@ export function ToolCall({ toolName, input, output, state = "pending" }: ToolCal
   };
 
   return (
-    <div
-      className={cn(
-        "border rounded-lg p-3 mb-2 transition-colors",
-        state === 'completed' && "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20",
-        state === 'error' && "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20",
-        state === 'pending' && "border-muted bg-muted/30"
-      )}
-    >
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5">{getStateIcon()}</div>
-        <div className="flex-1 min-w-0">
-          {renderContent()}
+    <div className="mb-3 text-sm">
+      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+        <div className="flex items-center gap-1.5">
+          {getStateIcon()}
+          <span className="font-medium">CodeFox wants to use {toolName}:</span>
         </div>
+      </div>
+      <div className="border-l-2 border-muted pl-4">
+        {renderContent()}
       </div>
     </div>
   );
