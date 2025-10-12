@@ -105,6 +105,7 @@ export class ProjectManager {
         timeout: 30000, // 30 seconds timeout
       });
       return result;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       return {
         stdout: error.stdout || '',
