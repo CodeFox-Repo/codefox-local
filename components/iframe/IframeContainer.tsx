@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { RefreshCw, ExternalLink, Globe, AlertCircle, ArrowRight } from "lucide-react";
-import { cn, isValidURL } from "@/lib/utils";
+import { isValidURL, cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 
 interface IframeContainerProps {
   url: string;
@@ -52,66 +56,63 @@ export function IframeContainer({ url, onUrlChange }: IframeContainerProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--iframe-bg)]">
+    <div className="flex flex-col h-full bg-background">
       {/* Header with URL controls */}
-      <div className="flex items-center gap-4 px-8 py-5 border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20">
-          <Globe className="w-5 h-5 text-primary" />
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-center size-9 rounded-lg bg-muted">
+          <Globe className="size-4 text-muted-foreground" />
         </div>
 
-        <form onSubmit={handleUrlSubmit} className="flex-1 flex gap-3">
-          <input
+        <form onSubmit={handleUrlSubmit} className="flex-1 flex gap-2">
+          <Input
             type="text"
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
             placeholder="Enter URL or ask AI to open a website..."
-            className={cn(
-              "flex-1 px-5 py-3 rounded-xl text-sm",
-              "bg-[var(--input-bg)] border border-[var(--input-border)]",
-              "text-foreground placeholder:text-gray-500",
-              "focus:border-primary focus:ring-2 focus:ring-primary/20",
-              "transition-all duration-200 shadow-sm"
-            )}
+            className="rounded-xl"
           />
-          <button
-            type="submit"
-            className="px-5 py-3 bg-primary hover:bg-primary-hover active:scale-95 text-gray-950 rounded-xl font-medium transition-all text-sm shadow-lg shadow-primary/20 flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4" />
+          <Button type="submit" size="sm" className="gap-1.5">
+            <ArrowRight />
             Go
-          </button>
+          </Button>
         </form>
 
-        <div className="flex items-center gap-2">
-          <button
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={handleReload}
             disabled={!url}
-            className="p-2.5 hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Reload"
           >
-            <RefreshCw className={cn("w-5 h-5 text-gray-400", isLoading && "animate-spin")} />
-          </button>
+            <RefreshCw className={cn(isLoading && "animate-spin")} />
+          </Button>
 
           {url && (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 hover:bg-gray-800 rounded-xl transition-colors"
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              asChild
               title="Open in new tab"
             >
-              <ExternalLink className="w-5 h-5 text-gray-400" />
-            </a>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink />
+              </a>
+            </Button>
           )}
         </div>
       </div>
 
       {/* Error message */}
       {error && (
-        <div className="px-8 py-4 bg-red-950/30 border-b border-red-900/50 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-          <p className="text-sm text-red-300">{error}</p>
-        </div>
+        <Alert variant="destructive" className="m-4 rounded-xl">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* iframe or empty state */}
@@ -119,10 +120,10 @@ export function IframeContainer({ url, onUrlChange }: IframeContainerProps) {
         {url ? (
           <>
             {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-950/50 z-10 backdrop-blur-sm">
-                <div className="flex flex-col items-center gap-4">
-                  <RefreshCw className="w-10 h-10 text-primary animate-spin" />
-                  <p className="text-sm text-gray-400">Loading website...</p>
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-3">
+                  <RefreshCw className="size-8 text-primary animate-spin" />
+                  <p className="text-sm text-muted-foreground">Loading website...</p>
                 </div>
               </div>
             )}
@@ -138,47 +139,42 @@ export function IframeContainer({ url, onUrlChange }: IframeContainerProps) {
             />
           </>
         ) : (
-          <div className="flex items-center justify-center h-full bg-gray-950">
-            <div className="text-center space-y-6 max-w-lg px-6">
-              <div className="relative">
-                <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-                  <Globe className="w-12 h-12 text-primary" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-bold text-foreground">
-                  Web Preview
-                </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
+          <div className="flex items-center justify-center h-full bg-background">
+            <Empty className="border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon" className="size-16 mb-2">
+                  <Globe className="size-8" />
+                </EmptyMedia>
+                <EmptyTitle className="text-2xl">Web Preview</EmptyTitle>
+                <EmptyDescription>
                   Enter a URL above or ask the AI assistant to open a website for you.
-                  <br />
-                  Browse the web right here!
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 justify-center pt-2">
-                <button
-                  onClick={() => {
-                    setInputUrl("google.com");
-                    onUrlChange("https://google.com");
-                  }}
-                  className="px-5 py-2.5 text-sm bg-gray-800/50 hover:bg-gray-800 rounded-xl text-gray-300 transition-all hover:scale-105 border border-gray-700/50 flex items-center gap-2"
-                >
-                  <span>🔍</span>
-                  Google
-                </button>
-                <button
-                  onClick={() => {
-                    setInputUrl("github.com");
-                    onUrlChange("https://github.com");
-                  }}
-                  className="px-5 py-2.5 text-sm bg-gray-800/50 hover:bg-gray-800 rounded-xl text-gray-300 transition-all hover:scale-105 border border-gray-700/50 flex items-center gap-2"
-                >
-                  <span>💻</span>
-                  GitHub
-                </button>
-              </div>
-            </div>
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <div className="flex flex-row gap-2 justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInputUrl("google.com");
+                      onUrlChange("https://google.com");
+                    }}
+                  >
+                    🔍 Google
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInputUrl("github.com");
+                      onUrlChange("https://github.com");
+                    }}
+                  >
+                    💻 GitHub
+                  </Button>
+                </div>
+              </EmptyContent>
+            </Empty>
           </div>
         )}
       </div>
