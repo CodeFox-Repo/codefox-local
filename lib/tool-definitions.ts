@@ -18,6 +18,10 @@ export const setPreviewUrlSchema = z.object({
   url: z.string().describe("Preview URL (e.g., http://localhost:5173)"),
 });
 
+export const tryStartDevServerSchema = z.object({
+  reason: z.string().optional().describe("Reason for starting the dev server (optional)"),
+});
+
 // ============================================================================
 // Output Schemas
 // ============================================================================
@@ -43,6 +47,14 @@ export const setPreviewUrlOutputSchema = z.object({
   message: z.string(),
 });
 
+export const tryStartDevServerOutputSchema = z.object({
+  success: z.boolean(),
+  url: z.string().optional(),
+  pid: z.number().optional(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+});
+
 // ============================================================================
 // Type Exports
 // ============================================================================
@@ -55,6 +67,9 @@ export type ExecuteCommandOutput = z.infer<typeof executeCommandOutputSchema>;
 
 export type SetPreviewUrlInput = z.infer<typeof setPreviewUrlSchema>;
 export type SetPreviewUrlOutput = z.infer<typeof setPreviewUrlOutputSchema>;
+
+export type TryStartDevServerInput = z.infer<typeof tryStartDevServerSchema>;
+export type TryStartDevServerOutput = z.infer<typeof tryStartDevServerOutputSchema>;
 
 // ============================================================================
 // Tool Definition Helpers

@@ -19,7 +19,16 @@ interface ProjectSnapshot {
   messages: UIMessage[];
 
   // Preview state snapshot
+  // @deprecated TODO: Remove later - replaced by auto-detected devServer.serverUrl
   iframeUrl: string;
+}
+
+// Dev server state
+interface DevServerState {
+  projectId: string | null;
+  serverUrl: string | null;
+  pid: number | null;
+  status: 'idle' | 'starting' | 'running' | 'error';
 }
 
 interface ProjectGeneratorStore {
@@ -33,7 +42,11 @@ interface ProjectGeneratorStore {
   messages: UIMessage[];
   input: string;
   isLoading: boolean;
+  // @deprecated TODO: Remove later - replaced by devServer.serverUrl
   iframeUrl: string;
+
+  // Dev server state - automatically managed
+  devServer: DevServerState;
 
   // Actions - Project Management
   setCurrentProject: (project: ProjectInfo) => void;
@@ -52,8 +65,13 @@ interface ProjectGeneratorStore {
   setIsLoading: (isLoading: boolean) => void;
   clearMessages: () => void;
 
-  // Actions - Iframe
+  // @deprecated TODO: Remove later - use devServer actions instead
   setIframeUrl: (url: string) => void;
+
+  // Actions - Dev Server
+  setDevServer: (projectId: string, url: string, pid: number) => void;
+  clearDevServer: () => void;
+  setDevServerStatus: (status: DevServerState['status']) => void;
 }
 
 export const useProjectStore = create<ProjectGeneratorStore>()(
@@ -66,6 +84,12 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
       input: '',
       isLoading: false,
       iframeUrl: '',
+      devServer: {
+        projectId: null,
+        serverUrl: null,
+        pid: null,
+        status: 'idle',
+      },
 
       // Project Management Actions
       setCurrentProject: (project: ProjectInfo) => {
@@ -125,6 +149,10 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
         if (currentId) {
           get().saveCurrentSnapshot();
         }
+
+        // Clear dev server state when switching projects
+        // It will be auto-detected by useDevServerMonitor from restored messages
+        get().clearDevServer();
 
         // Switch to target project and restore its state
         set({
@@ -189,9 +217,15 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
 
       getProjectHistory: () => {
         const snapshots = Object.values(get().projectSnapshots);
-        return snapshots.sort(
-          (a, b) => b.lastAccessedAt.getTime() - a.lastAccessedAt.getTime()
-        );
+        return snapshots.sort((a, b) => {
+          const aTime = typeof a.lastAccessedAt === 'string'
+            ? new Date(a.lastAccessedAt).getTime()
+            : a.lastAccessedAt.getTime();
+          const bTime = typeof b.lastAccessedAt === 'string'
+            ? new Date(b.lastAccessedAt).getTime()
+            : b.lastAccessedAt.getTime();
+          return bTime - aTime;
+        });
       },
 
       getCurrentProject: () => {
@@ -218,7 +252,7 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
 
       clearMessages: () => set({ messages: [] }),
 
-      // Iframe Actions
+      // @deprecated TODO: Remove later - use devServer actions instead
       setIframeUrl: (iframeUrl: string) => {
         set({ iframeUrl });
         // Auto-save snapshot
@@ -226,6 +260,38 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
         if (currentId) {
           setTimeout(() => get().saveCurrentSnapshot(), 100);
         }
+      },
+
+      // Dev Server Actions
+      setDevServer: (projectId: string, url: string, pid: number) => {
+        set({
+          devServer: {
+            projectId,
+            serverUrl: url,
+            pid,
+            status: 'running',
+          },
+        });
+      },
+
+      clearDevServer: () => {
+        set({
+          devServer: {
+            projectId: null,
+            serverUrl: null,
+            pid: null,
+            status: 'idle',
+          },
+        });
+      },
+
+      setDevServerStatus: (status: DevServerState['status']) => {
+        set((state) => ({
+          devServer: {
+            ...state.devServer,
+            status,
+          },
+        }));
       },
     }),
     {

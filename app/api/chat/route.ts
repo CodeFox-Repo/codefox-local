@@ -8,7 +8,7 @@ import {
   defineClientSideTool,
   writeFileSchema,
   executeCommandSchema,
-  setPreviewUrlSchema,
+  tryStartDevServerSchema,
   type WriteFileOutput,
   type ExecuteCommandOutput,
 } from "@/lib/tool-definitions";
@@ -180,10 +180,10 @@ export async function POST(req: Request) {
           }
         },
       }),
-      // Client-side tool: setPreviewUrl (no execute function)
-      setPreviewUrl: defineClientSideTool({
-        description: "Update the preview iframe URL. This is a client-side tool that will be handled by the frontend.",
-        inputSchema: setPreviewUrlSchema,
+      // Client-side tool: tryStartDevServer
+      tryStartDevServer: defineClientSideTool({
+        description: "Try to start the development server for the current project. This will run 'bun install && bun dev' and automatically detect the server URL. Call this tool when you have completed your work and want to preview the result.",
+        inputSchema: tryStartDevServerSchema,
       }),
     };
 

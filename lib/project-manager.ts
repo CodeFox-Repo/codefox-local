@@ -6,7 +6,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 const TEMPLATE_REPO = 'https://github.com/Sma1lboy/hetagon-template.git';
-const PROJECTS_DIR = path.join(process.cwd(), '.projects');
+const PROJECTS_DIR = path.join(process.env.HOME || process.cwd(), '.codefox-local', 'projects');
 
 export interface ProjectInfo {
   id: string;

@@ -9,7 +9,8 @@ import { ChatContainer } from "@/components/chat/ChatContainer";
 import { IframeContainer } from "@/components/iframe/IframeContainer";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { useProjectStore } from "@/lib/store";
-import { createProject, setPreviewUrl } from "@/lib/client-tools";
+import { createProject } from "@/lib/client-tools";
+import { clientToolCall } from "@/lib/client-tool-handlers";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -18,8 +19,6 @@ export default function Home() {
 
   // Subscribe to specific fields from store to trigger re-renders
   const currentProjectId = useProjectStore((state) => state.currentProjectId);
-  const storedMessages = useProjectStore((state) => state.messages);
-  const storedIframeUrl = useProjectStore((state) => state.iframeUrl);
   const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
   const setCurrentProject = useProjectStore((state) => state.setCurrentProject);
   const saveMessages = useProjectStore((state) => state.setMessages);
@@ -45,31 +44,7 @@ export default function Home() {
       toast.error("Failed to send message");
     },
     async onToolCall({ toolCall }) {
-      // Check if it's a dynamic tool first for proper type narrowing
-      if (toolCall.dynamic) {
-        return;
-      }
-
-      if (toolCall.toolName === 'setPreviewUrl') {
-        try {
-          const input = toolCall.input as { url: string };
-          await setPreviewUrl(input.url);
-
-          // No await - avoids potential deadlocks
-          addToolResult({
-            tool: 'setPreviewUrl',
-            toolCallId: toolCall.toolCallId,
-            output: { success: true, message: `Preview updated to ${input.url}` },
-          });
-        } catch (err) {
-          addToolResult({
-            tool: 'setPreviewUrl',
-            toolCallId: toolCall.toolCallId,
-            state: 'output-error',
-            errorText: err instanceof Error ? err.message : 'Failed to update preview',
-          });
-        }
-      }
+      await clientToolCall({ toolCall, addToolResult });
     },
   });
 
@@ -80,18 +55,18 @@ export default function Home() {
     }
   }, [messages, currentProject, saveMessages]);
 
-  // Restore messages when project switches
+  // Restore messages when project switches (only when projectId changes)
   useEffect(() => {
     if (!currentProjectId) {
       setAIMessages([]);
       return;
     }
 
-    // Only update if different to avoid loops
-    if (JSON.stringify(storedMessages) !== JSON.stringify(messages)) {
-      setAIMessages(storedMessages);
-    }
-  }, [currentProjectId, storedMessages, messages, setAIMessages]);
+    // Get the current stored messages for this project
+    const currentStoredMessages = useProjectStore.getState().messages;
+    setAIMessages(currentStoredMessages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProjectId]); // Only depend on projectId, not storedMessages
 
   const handleInputChange = (value: string) => {
     setInput(value);
@@ -102,10 +77,13 @@ export default function Home() {
       return;
     }
 
-    // Check if this is the first message (project not created yet)
-    const isFirstMessage = messages.length === 0 && !currentProject;
+    // Check if we need to create a new project
+    // This happens when:
+    // 1. No current project in store
+    // 2. No messages yet (fresh start)
+    const needsNewProject = !currentProject || messages.length === 0;
 
-    if (isFirstMessage) {
+    if (needsNewProject) {
       // Initialize project first
       setIsInitializing(true);
       try {
@@ -113,6 +91,9 @@ export default function Home() {
         const project = await createProject(`website-${Date.now()}`);
         setCurrentProject(project);
         toast.success("Project initialized!");
+
+        // Wait a tick for store to update
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Now send the message after project is created
         sendMessage({
