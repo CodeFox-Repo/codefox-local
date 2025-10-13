@@ -13,6 +13,7 @@ export interface ProjectInfo {
   name: string;
   path: string;
   createdAt: Date;
+  title?: string;
 }
 
 export class ProjectManager {
@@ -65,6 +66,21 @@ export class ProjectManager {
 
   getProject(projectId: string): ProjectInfo | undefined {
     return this.projects.get(projectId);
+  }
+
+  setProjectTitle(projectId: string, title: string | null): ProjectInfo {
+    const project = this.getProject(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    const updated: ProjectInfo = {
+      ...project,
+      title: title ?? undefined,
+    };
+
+    this.projects.set(projectId, updated);
+    return updated;
   }
 
   getProjectPath(projectId: string): string {

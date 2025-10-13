@@ -9,7 +9,7 @@ import { IframeContainer } from "@/components/iframe/iframe-container";
 import { MainLayout } from "@/components/layout/main-layout";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
-import { createProject } from "@/lib/client-tools";
+import { createProject, requestProjectTitle } from "@/lib/client-tools";
 import { clientToolCall } from "@/lib/client-tool-handlers";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ export default function Home() {
   const projectId = useProjectStore((state) => state.currentProjectId);
   const setProject = useProjectStore((state) => state.setCurrentProject);
   const syncMessages = useProjectStore((state) => state.setMessages);
+  const setProjectTitle = useProjectStore((state) => state.setProjectTitle);
   const project = useProjectStore((state) => state.getCurrentProject());
 
   const transport = useMemo(
@@ -109,6 +110,12 @@ export default function Home() {
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         sendUserMessage(trimmed);
+
+        const title = await requestProjectTitle(nextProject.id, trimmed);
+        if (title) {
+          setProjectTitle(nextProject.id, title);
+        }
+  
       } catch (error) {
         console.error("Failed to create project:", error);
         toast.error("Failed to initialize project");

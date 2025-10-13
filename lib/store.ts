@@ -7,6 +7,7 @@ interface ProjectInfo {
   name: string;
   path: string;
   createdAt: Date;
+  title?: string;
 }
 
 // Project snapshot - saves complete state of a project at a specific moment
@@ -54,6 +55,7 @@ interface ProjectGeneratorStore {
   saveCurrentSnapshot: () => void;
   removeFromHistory: (projectId: string) => void;
   clearHistory: () => void;
+  setProjectTitle: (projectId: string, title: string | null) => void;
 
   // Helper - get project history list (sorted by last accessed time)
   getProjectHistory: () => ProjectSnapshot[];
@@ -214,6 +216,28 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
           currentProjectId: null,
           messages: [],
           iframeUrl: '',
+        });
+      },
+
+      setProjectTitle: (projectId: string, title: string | null) => {
+        const snapshot = get().projectSnapshots[projectId];
+        if (!snapshot) {
+          return;
+        }
+
+        const updatedSnapshot: ProjectSnapshot = {
+          ...snapshot,
+          project: {
+            ...snapshot.project,
+            title: title ?? undefined,
+          },
+        };
+
+        set({
+          projectSnapshots: {
+            ...get().projectSnapshots,
+            [projectId]: updatedSnapshot,
+          },
         });
       },
 

@@ -70,6 +70,7 @@ export function ProjectHistory() {
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-2">
               {projectHistory.map((snapshot) => {
+                const label = snapshot.project.title ?? snapshot.project.name;
                 const isActive = currentProjectId === snapshot.project.id;
                 const lastAccessed = new Date(snapshot.lastAccessedAt);
 
@@ -77,21 +78,26 @@ export function ProjectHistory() {
                 const projectId = snapshot.project.id;
 
                 // Determine display path based on path format
-                let displayPath: string;
+                let displayPath: string | null = null;
                 if (!snapshot.project.path || snapshot.project.path === 'browser-storage') {
-                  // Legacy or invalid data - just show project ID
-                  displayPath = projectId;
+                  displayPath = null;
                 } else if (snapshot.project.path.includes('.codefox-local/projects')) {
-                  // Correct new format - show just project ID
-                  displayPath = projectId;
+                  const segments = snapshot.project.path.split('/');
+                  const lastTwo = segments.slice(-2).join('/');
+                  displayPath = `…/${lastTwo}`;
                 } else if (snapshot.project.path.includes('.projects')) {
                   // Old wrong format - extract project ID from path
                   const match = snapshot.project.path.match(/project-\d+/);
-                  displayPath = match ? match[0] : projectId;
+                  displayPath = match ? match[0] : null;
                 } else {
                   // Unknown format - show full path
                   displayPath = snapshot.project.path;
                 }
+
+                const showSecondaryLabel =
+                  displayPath &&
+                  displayPath !== label &&
+                  displayPath !== projectId;
 
                 return (
                   <div
@@ -121,7 +127,7 @@ export function ProjectHistory() {
                             isActive ? "text-primary" : "text-foreground"
                           }`}
                         >
-                          {snapshot.project.name}
+                          {label}
                         </p>
                         {isActive && (
                           <span className="text-[10px] font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded-full flex-shrink-0">
@@ -129,9 +135,11 @@ export function ProjectHistory() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground/70 font-mono truncate mb-2 bg-muted/30 px-2 py-1 rounded">
-                        {displayPath}
-                      </p>
+                      {showSecondaryLabel && (
+                        <p className="text-xs text-muted-foreground/70 font-mono truncate mb-2 bg-muted/30 px-2 py-1 rounded">
+                          {displayPath}
+                        </p>
+                      )}
                       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                         <span className="opacity-70">Last accessed</span>
                         <span className="font-medium">
