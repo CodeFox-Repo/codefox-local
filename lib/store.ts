@@ -299,9 +299,8 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
     {
       name: 'codefox-project-storage',
       partialize: (state) => ({
-        // Only persist project snapshots and current project ID
+        // Only persist project snapshots
         projectSnapshots: state.projectSnapshots,
-        currentProjectId: state.currentProjectId,
         // Don't persist real-time state (messages, input, isLoading, iframeUrl)
       }),
       storage: createJSONStorage(() => ({

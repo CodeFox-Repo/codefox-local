@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
-import { MainLayout } from "@/components/layout/main-layout";
 import { ChatContainer } from "@/components/chat/chat-container";
 import { IframeContainer } from "@/components/iframe/iframe-container";
+import { MainLayout } from "@/components/layout/main-layout";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
 import { createProject } from "@/lib/client-tools";
@@ -16,17 +16,13 @@ import { toast } from "sonner";
 export default function Home() {
   const [input, setInput] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
-  const previousProjectIdRef = useRef<string | null>(null);
+  const lastProjectIdRef = useRef<string | null>(null);
 
-  // Subscribe to specific fields from store to trigger re-renders
-  const currentProjectId = useProjectStore((state) => state.currentProjectId);
-  const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
-  const setCurrentProject = useProjectStore((state) => state.setCurrentProject);
-  const saveMessages = useProjectStore((state) => state.setMessages);
+  const projectId = useProjectStore((state) => state.currentProjectId);
+  const setProject = useProjectStore((state) => state.setCurrentProject);
+  const syncMessages = useProjectStore((state) => state.setMessages);
+  const project = useProjectStore((state) => state.getCurrentProject());
 
-  const currentProject = getCurrentProject();
-
-  // Create transport with dynamic projectId using body function
   const transport = useMemo(
     () =>
       new DefaultChatTransport<UIMessage>({
@@ -38,7 +34,7 @@ export default function Home() {
     []
   );
 
-  const { messages, sendMessage, addToolResult, status, setMessages: setAIMessages, stop } = useChat({
+  const { messages, sendMessage, addToolResult, status, setMessages: setChatMessages, stop } = useChat({
     transport,
     onError: (error) => {
       console.error("Chat error:", error);
@@ -49,82 +45,70 @@ export default function Home() {
     },
   });
 
-  // Sync messages to store whenever they change
   useEffect(() => {
-    const previousProjectId = previousProjectIdRef.current;
-    previousProjectIdRef.current = currentProjectId;
+    const previousId = lastProjectIdRef.current;
+    lastProjectIdRef.current = projectId;
 
-    if (!currentProjectId || !currentProject || messages.length === 0) {
+    if (
+      !projectId ||
+      !project ||
+      messages.length === 0 ||
+      (previousId && previousId !== projectId)
+    ) {
       return;
     }
 
-    if (previousProjectId && previousProjectId !== currentProjectId) {
-      // Skip syncing while a project switch is propagating to avoid overwriting snapshots
-      return;
-    }
+    syncMessages(messages);
+  }, [messages, projectId, project, syncMessages]);
 
-    saveMessages(messages);
-  }, [messages, currentProject, currentProjectId, saveMessages]);
-
-  // Restore messages when project switches (only when projectId changes)
   useEffect(() => {
-
-    if (!currentProjectId) {
-      setAIMessages([]);
+    if (!projectId) {
+      setChatMessages([]);
       return;
     }
 
-    const snapshot = useProjectStore.getState().projectSnapshots[currentProjectId];
+    const snapshot = useProjectStore.getState().projectSnapshots[projectId];
     if (!snapshot) {
-      setAIMessages([]);
+      setChatMessages([]);
       return;
     }
 
-    console.log('[PageEffect] Restoring messages for project:', currentProjectId, 'messages:', snapshot.messages.length);
-    setAIMessages(snapshot.messages);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProjectId]); // Only depend on projectId, not storedMessages
+    setChatMessages(snapshot.messages);
+  }, [projectId, setChatMessages]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
   };
 
+  const sendUserMessage = (text: string) => {
+    sendMessage({
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text,
+        },
+      ],
+    });
+    setInput("");
+  };
+
   const handleSubmit = async (value: string) => {
-    if (!value.trim() || status === "streaming" || isInitializing) {
+    const trimmed = value.trim();
+    if (!trimmed || status === "streaming" || isInitializing) {
       return;
     }
 
-    // Check if we need to create a new project
-    // This happens when:
-    // 1. No current project in store
-    // 2. No messages yet (fresh start)
-    const needsNewProject = !currentProject || messages.length === 0;
-
-    if (needsNewProject) {
-      // Initialize project first
+    if (!project || messages.length === 0) {
       setIsInitializing(true);
       try {
         toast.info("Initializing project...");
-        const project = await createProject(`website-${Date.now()}`);
-        setCurrentProject(project);
+        const nextProject = await createProject(`website-${Date.now()}`);
+        setProject(nextProject);
         toast.success("Project initialized!");
 
-        // Wait a tick for store to update
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        // Now send the message after project is created
-        sendMessage({
-          role: "user",
-          parts: [
-            {
-              type: "text",
-              text: value.trim(),
-            },
-          ],
-        });
-
-        // Clear input
-        setInput("");
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        sendUserMessage(trimmed);
       } catch (error) {
         console.error("Failed to create project:", error);
         toast.error("Failed to initialize project");
@@ -132,41 +116,22 @@ export default function Home() {
         setIsInitializing(false);
       }
     } else {
-      // Project already exists, just send the message
-      if (!currentProject) {
-        toast.error("Project not initialized yet");
-        return;
-      }
-
-      sendMessage({
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: value.trim(),
-          },
-        ],
-      });
-
-      // Clear input
-      setInput("");
+      sendUserMessage(trimmed);
     }
   };
 
   const handleNewProject = () => {
-    // Save current snapshot first
-    const currentId = useProjectStore.getState().currentProjectId;
-    if (currentId) {
+    const activeId = useProjectStore.getState().currentProjectId;
+    if (activeId) {
       useProjectStore.getState().saveCurrentSnapshot();
     }
 
-    // Clear current project and messages
     useProjectStore.setState({
       currentProjectId: null,
       messages: [],
       input: '',
     });
-    setAIMessages([]);
+    setChatMessages([]);
     setInput("");
     toast.info("Ready to create a new project");
   };
