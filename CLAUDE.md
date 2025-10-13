@@ -17,6 +17,7 @@ An AI-powered local website project generator that allows users to create comple
 
 - **No `any` type**: Avoid using `any` type in the project. Always use explicit types or proper TypeScript generics.
 - **No decorative comments**: Avoid using decorative banner-style comments like `// ==================== SECTION NAME ====================`. Use simple, concise comments instead.
+- **File naming convention**: All files must use **kebab-case** naming (e.g., `chat-container.tsx`, `main-layout.tsx`, `set-preview-url.tsx`). Never use PascalCase for file names.
 
 ## Development Environment
 

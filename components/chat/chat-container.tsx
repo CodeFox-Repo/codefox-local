@@ -1,11 +1,11 @@
 "use client";
 
 import { Settings, Plus } from "lucide-react";
-import { MessageList } from "./MessageList";
-import { ChatInput } from "./ChatInput";
+import { MessageList } from "./message-list";
+import { ChatInput } from "./chat-input";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/lib/settings-store";
-import { ProjectHistory } from "@/components/project/ProjectHistory";
+import { ProjectHistory } from "@/components/project/project-history";
 import type { UIMessage } from "ai";
 
 interface ChatContainerProps {

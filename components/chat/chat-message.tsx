@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Loader2 } from "lucide-react";
-import { Response } from "@/components/ai-elements/response";
+import { Response } from "@/components/response";
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
