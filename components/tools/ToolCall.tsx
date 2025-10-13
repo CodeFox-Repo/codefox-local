@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { UIDataTypes, UIMessagePart, UITools } from "ai";
-import { getStateIcon } from "./tool-icons";
-import { getToolTitle } from "./tool-titles";
 import {
   renderToolWriteFile,
   renderToolExecuteCommand,
   renderToolSetPreviewUrl,
+  renderToolTryStartDevServer,
   renderToolDefault,
 } from ".";
 import type {
@@ -16,11 +15,20 @@ import type {
   ExecuteCommandOutput,
   SetPreviewUrlInput,
   SetPreviewUrlOutput,
+  TryStartDevServerInput,
+  TryStartDevServerOutput,
 } from "@/lib/tool-definitions";
 
 interface ToolCallProps {
   toolName: string;
   toolPart: UIMessagePart<UIDataTypes, UITools>;
+}
+
+interface RenderResult {
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  title: React.ReactNode;
+  content: React.ReactNode;
 }
 
 function getToolState(part: UIMessagePart<UIDataTypes, UITools>): "pending" | "completed" | "error" {
@@ -35,53 +43,74 @@ function getToolState(part: UIMessagePart<UIDataTypes, UITools>): "pending" | "c
   return "pending";
 }
 
-function renderTool(toolName: string, toolPart: UIMessagePart<UIDataTypes, UITools>) {
+function renderTool(
+  toolName: string,
+  toolPart: UIMessagePart<UIDataTypes, UITools>,
+  state: "pending" | "completed" | "error"
+): RenderResult {
   const part = toolPart as Record<string, unknown>;
   const input = part.input || part.args;
+  if(!input) {
+    return {
+      icon: ChevronRight,
+      iconColor: 'text-muted-foreground',
+      title: 'Loading...',
+      content: null,
+    };
+  }
   const output = part.output;
+
 
   switch (toolName) {
     case 'writeFile':
       return renderToolWriteFile(
         input as WriteFileInput,
-        output as WriteFileOutput | undefined
+        output as WriteFileOutput | undefined,
+        state
       );
     case 'executeCommand':
       return renderToolExecuteCommand(
         input as ExecuteCommandInput,
-        output as ExecuteCommandOutput | undefined
+        output as ExecuteCommandOutput | undefined,
+        state
       );
     case 'setPreviewUrl':
       return renderToolSetPreviewUrl(
         input as SetPreviewUrlInput,
-        output as SetPreviewUrlOutput | undefined
+        output as SetPreviewUrlOutput | undefined,
+        state
+      );
+    case 'tryStartDevServer':
+      return renderToolTryStartDevServer(
+        input as TryStartDevServerInput,
+        output as TryStartDevServerOutput | undefined,
+        state
       );
     default:
-      return renderToolDefault(toolName, input);
+      return renderToolDefault(toolName, input, state);
   }
 }
 
 export function ToolCall({ toolName, toolPart }: ToolCallProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const part = toolPart as Record<string, unknown>;
-  const input = part.input || part.args;
   const state = getToolState(toolPart);
+  const { icon: Icon, iconColor, title, content } = renderTool(toolName, toolPart, state);
 
   return (
     <div className="mb-3 text-sm min-w-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-muted-foreground mb-2 hover:text-foreground transition-colors w-full text-left min-w-0"
+        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full text-left min-w-0"
       >
         <ChevronRight
           className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
         />
-        {getStateIcon(state)}
-        <span className="font-medium truncate">{getToolTitle(toolName, input, state)}</span>
+        <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
+        <span className="font-medium truncate">{title}</span>
       </button>
-      {isOpen && (
+      {isOpen && content && (
         <div className="border-l-2 border-muted pl-4 ml-6 min-w-0">
-          {renderTool(toolName, toolPart)}
+          {content}
         </div>
       )}
     </div>

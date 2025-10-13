@@ -1,14 +1,47 @@
+import { FileText, CheckCircle2, XCircle } from "lucide-react";
 import type { WriteFileInput, WriteFileOutput } from "@/lib/tool-definitions";
+
+interface RenderResult {
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  title: React.ReactNode;
+  content: React.ReactNode;
+}
 
 export function renderToolWriteFile(
   input: WriteFileInput,
-  output?: WriteFileOutput
-) {
+  output?: WriteFileOutput,
+  state?: "pending" | "completed" | "error"
+): RenderResult {
   if (!input.content) {
-    return <span className="text-muted-foreground">Writing file...</span>;
+    return {
+      icon: FileText,
+      iconColor: 'text-muted-foreground',
+      title: 'Writing file...',
+      content: null,
+    };
   }
 
-  return (
+  const fileName = input.path?.split('/').pop() || input.path || 'file';
+  const lines = input.content?.split('\n').length || 0;
+  const isCompleted = state === 'completed';
+  const isError = state === 'error';
+
+  const icon = isError ? XCircle : isCompleted ? CheckCircle2 : FileText;
+  const iconColor = isError ? 'text-red-500' : isCompleted ? 'text-green-500' : 'text-muted-foreground';
+
+  const title = isCompleted ? (
+    <>
+      CodeFox written to <code className="font-mono font-semibold">{fileName}</code>
+      <span className="text-muted-foreground ml-1">({lines} lines)</span>
+    </>
+  ) : (
+    <>
+      CodeFox wants to write to <code className="font-mono font-semibold">{fileName}</code>
+    </>
+  );
+
+  const content = (
     <div className="space-y-2">
       {output?.error && (
         <div className="text-xs text-red-600 dark:text-red-400">
@@ -20,4 +53,6 @@ export function renderToolWriteFile(
 {input.content}</pre>
     </div>
   );
+
+  return { icon, iconColor, title, content };
 }

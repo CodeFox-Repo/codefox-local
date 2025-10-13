@@ -1,14 +1,41 @@
+import { Terminal, CheckCircle2, XCircle } from "lucide-react";
 import type { ExecuteCommandInput, ExecuteCommandOutput } from "@/lib/tool-definitions";
+
+interface RenderResult {
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  title: React.ReactNode;
+  content: React.ReactNode;
+}
 
 export function renderToolExecuteCommand(
   input: ExecuteCommandInput,
-  output?: ExecuteCommandOutput
-) {
+  output?: ExecuteCommandOutput,
+  state?: "pending" | "completed" | "error"
+): RenderResult {
   if (!input.command) {
-    return <span className="text-muted-foreground">Executing command...</span>;
+    return {
+      icon: Terminal,
+      iconColor: 'text-muted-foreground',
+      title: 'Executing command...',
+      content: null,
+    };
   }
 
-  return (
+  const isCompleted = state === 'completed';
+  const isError = state === 'error';
+
+  const icon = isError ? XCircle : isCompleted ? CheckCircle2 : Terminal;
+  const iconColor = isError ? 'text-red-500' : isCompleted ? 'text-green-500' : 'text-muted-foreground';
+
+  const title = (
+    <>
+      CodeFox {isCompleted ? 'executed' : 'wants to execute'} <code className="font-mono font-semibold">{input.command}</code>
+      {input.keepAlive && <span className="text-muted-foreground ml-1">(background)</span>}
+    </>
+  );
+
+  const content = (
     <div className="space-y-2">
       <div className="bg-muted/30 rounded px-3 py-2 border">
         <code className="text-xs font-mono">{input.command}</code>
@@ -41,4 +68,6 @@ export function renderToolExecuteCommand(
       )}
     </div>
   );
+
+  return { icon, iconColor, title, content };
 }

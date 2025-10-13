@@ -1,10 +1,32 @@
-export function renderToolDefault(toolName: string, input: unknown) {
-  return (
+import { Wrench, CheckCircle2, XCircle } from "lucide-react";
+
+interface RenderResult {
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  title: React.ReactNode;
+  content: React.ReactNode;
+}
+
+export function renderToolDefault(
+  toolName: string,
+  input: unknown,
+  state?: "pending" | "completed" | "error"
+): RenderResult {
+  const isCompleted = state === 'completed';
+  const isError = state === 'error';
+
+  const icon = isError ? XCircle : isCompleted ? CheckCircle2 : Wrench;
+  const iconColor = isError ? 'text-red-500' : isCompleted ? 'text-green-500' : 'text-muted-foreground';
+
+  const title = `CodeFox ${isCompleted ? 'used' : 'wants to use'} ${toolName}`;
+
+  const content = (
     <div className="text-sm">
-      <code className="font-mono">{toolName}</code>
-      <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">
+      <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
         {JSON.stringify(input, null, 2)}
       </pre>
     </div>
   );
+
+  return { icon, iconColor, title, content };
 }
