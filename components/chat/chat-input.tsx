@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, StopCircle } from "lucide-react";
+import { ArrowUp, StopCircle } from "lucide-react";
 
 interface ChatInputProps {
   value: string;
@@ -53,44 +53,49 @@ export function ChatInput({
     }
   }, [value]);
 
+  const isSubmitDisabled = !value.trim() || isLoading;
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-background min-w-0">
-      <div className="flex gap-2 items-start min-w-0">
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={isLoading}
-          className="max-h-[200px] resize-none min-w-0 flex-1"
-          rows={2}
-        />
-        {isLoading && onPause ? (
-          <Button
-            type="button"
-            onClick={handleStop}
-            variant="destructive"
-            size="icon"
-            className="h-14.5 w-11 shrink-0"
-            title="Stop Generation"
-          >
-            <StopCircle className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            disabled={!value.trim() || isLoading}
-            size="icon"
-            className="h-14.5 w-11 shrink-0"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
+    <form
+      onSubmit={handleSubmit}
+      className="border-t bg-background px-4 pb-6 pt-4 min-w-0"
+    >
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="relative rounded-2xl border border-primary/30 bg-background/95 shadow-[0_12px_35px_rgba(0,0,0,0.08)]">
+          <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={isLoading}
+            className="max-h-[240px] min-h-[120px] w-full resize-none border-0 bg-transparent px-5 pb-16 pt-5 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:outline-none"
+            rows={4}
+          />
+
+          {isLoading && onPause ? (
+            <button
+              type="button"
+              onClick={handleStop}
+              className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/30 focus:outline-none"
+              title="Stop generation"
+            >
+              <StopCircle className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitDisabled}
+              className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/15 hover:text-primary focus:outline-none disabled:text-muted-foreground"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </button>
+          )}
+          <div className="pointer-events-none absolute bottom-3 left-5 text-xs text-muted-foreground/80">
+            <span>Enter to send • Shift + Enter for new line</span>
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
-        Press Enter to send, Shift + Enter for new line
-      </p>
     </form>
   );
 }
