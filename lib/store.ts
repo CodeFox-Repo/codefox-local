@@ -243,15 +243,12 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
 
       getProjectHistory: () => {
         const snapshots = Object.values(get().projectSnapshots);
-        return snapshots.sort((a, b) => {
-          const aTime = typeof a.lastAccessedAt === 'string'
-            ? new Date(a.lastAccessedAt).getTime()
-            : a.lastAccessedAt.getTime();
-          const bTime = typeof b.lastAccessedAt === 'string'
-            ? new Date(b.lastAccessedAt).getTime()
-            : b.lastAccessedAt.getTime();
-          return bTime - aTime;
-        });
+        const toTime = (value: Date | string) => {
+          const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
+          return Number.isNaN(ms) ? 0 : ms;
+        };
+
+        return snapshots.sort((a, b) => toTime(b.project.createdAt) - toTime(a.project.createdAt));
       },
 
       getCurrentProject: () => {

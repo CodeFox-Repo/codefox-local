@@ -8,6 +8,7 @@ import {
   renderToolTryStartDevServer,
   renderToolDefault,
 } from ".";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { RenderResult } from "./types";
 
 interface ToolCallProps {
@@ -67,27 +68,31 @@ function renderTool(
 }
 
 export function ToolCall({ toolName, toolPart }: ToolCallProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const state = getToolState(toolPart);
   const { icon: Icon, iconColor, title, content } = renderTool(toolName, toolPart, state);
 
   return (
-    <div className="mb-3 text-sm min-w-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full text-left min-w-0"
-      >
-        <ChevronRight
-          className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-        />
-        <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
-        <span className="font-medium truncate">{title}</span>
-      </button>
-      {isOpen && content && (
-        <div className="border-l-2 border-muted pl-4 ml-6 min-w-0">
-          {content}
-        </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-3 text-sm min-w-0">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full text-left min-w-0"
+        >
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+          />
+          <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
+          <span className="font-medium truncate">{title}</span>
+        </button>
+      </CollapsibleTrigger>
+      {content && (
+        <CollapsibleContent>
+          <div className="mt-2 border-l-2 border-muted pl-4 ml-6 min-w-0 space-y-2">
+            {content}
+          </div>
+        </CollapsibleContent>
       )}
-    </div>
+    </Collapsible>
   );
 }
