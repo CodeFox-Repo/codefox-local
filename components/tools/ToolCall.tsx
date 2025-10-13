@@ -8,7 +8,7 @@ import {
   renderToolExecuteCommand,
   renderToolSetPreviewUrl,
   renderToolDefault,
-} from "./renderers";
+} from ".";
 import type {
   WriteFileInput,
   WriteFileOutput,
