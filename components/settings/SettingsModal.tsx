@@ -27,8 +27,6 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
-type Tab = 'general' | 'ai' | 'projects' | 'advanced';
-
 const NAV_ITEMS = [
   { id: 'general' as const, label: 'General', icon: Settings },
   { id: 'ai' as const, label: 'AI Settings', icon: Sparkles },

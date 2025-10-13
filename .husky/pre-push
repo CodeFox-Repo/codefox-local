@@ -1,17 +1,96 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 Running pre-push validations..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 Pre-push Validation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "📋 Installing dependencies..."
-bun install || exit 1
-echo "✅ Dependencies installed"
+# 1. Run ESLint with auto-fix
+echo "🔧 Running ESLint auto-fix..."
+bun run lint --fix 2>&1 | tee /tmp/eslint-output.log
+
+# Check ESLint exit code
+LINT_EXIT_CODE=${PIPESTATUS[0]}
+
+# 2. Check if lint made any changes
+if ! git diff --quiet; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ ESLint Auto-Fix Applied"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "ESLint automatically fixed some issues."
+  echo ""
+  echo "📝 Modified files:"
+  git diff --name-only | sed 's/^/   /'
+  echo ""
+  echo "⚠️  Action required:"
+  echo "   1. Review the changes: git diff"
+  echo "   2. Stage the fixes:    git add ."
+  echo "   3. Commit the fixes:   git commit -m \"fix: apply ESLint auto-fixes\""
+  echo "   4. Push again:         git push"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+
+# 3. Check if there are any lint errors that couldn't be fixed
+if [ $LINT_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ ESLint Errors Found"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "ESLint found errors that require manual fixing."
+  echo ""
+  echo "Please fix the errors shown above and try again."
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+
+echo "✅ ESLint passed"
 echo ""
 
-echo "📋 Building project..."
-bun run build || exit 1
+# 4. Install dependencies
+echo "📦 Checking dependencies..."
+bun install --frozen-lockfile 2>&1 | grep -v "Already installed" || true
+echo "✅ Dependencies OK"
+echo ""
+
+# 5. TypeScript type check
+echo "🔍 Running TypeScript type check..."
+if ! bun run tsc --noEmit; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ TypeScript Type Check Failed"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Please fix the type errors shown above."
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+echo "✅ Type check passed"
+echo ""
+
+# 6. Build project
+echo "🏗️  Building project..."
+if ! bun run build; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ Build Failed"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Please fix the build errors shown above."
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
 echo "✅ Build successful"
 echo ""
 
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✨ All checks passed! Pushing..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

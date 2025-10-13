@@ -1,8 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Loader2 } from "lucide-react";
+import { User, Loader2 } from "lucide-react";
 import { Response } from "@/components/ai-elements/response";
 
 interface ChatMessageProps {
