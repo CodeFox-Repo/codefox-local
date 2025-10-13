@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 export default function Home() {
   const [input, setInput] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
+  const previousProjectIdRef = useRef<string | null>(null);
 
   // Subscribe to specific fields from store to trigger re-renders
   const currentProjectId = useProjectStore((state) => state.currentProjectId);
@@ -50,10 +51,20 @@ export default function Home() {
 
   // Sync messages to store whenever they change
   useEffect(() => {
-    if (messages.length > 0 && currentProject) {
-      saveMessages(messages);
+    const previousProjectId = previousProjectIdRef.current;
+    previousProjectIdRef.current = currentProjectId;
+
+    if (!currentProjectId || !currentProject || messages.length === 0) {
+      return;
     }
-  }, [messages, currentProject, saveMessages]);
+
+    if (previousProjectId && previousProjectId !== currentProjectId) {
+      // Skip syncing while a project switch is propagating to avoid overwriting snapshots
+      return;
+    }
+
+    saveMessages(messages);
+  }, [messages, currentProject, currentProjectId, saveMessages]);
 
   // Restore messages when project switches (only when projectId changes)
   useEffect(() => {
