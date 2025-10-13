@@ -2,7 +2,6 @@ import { streamText, convertToModelMessages } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { spawn } from "child_process";
 import { ProjectManager } from "@/lib/project-manager";
-import { CODEFOX_SYSTEM_PROMPT } from "@/lib/prompts";
 import {
   defineServerSideTool,
   defineClientSideTool,
@@ -12,6 +11,7 @@ import {
   type WriteFileOutput,
   type ExecuteCommandOutput,
 } from "@/lib/tool-definitions";
+import { createSystemPrompt } from "@/lib/prompts";
 
 const projectManager = ProjectManager.getInstance();
 
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
         process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-sonnet-4.5"
       ),
       messages: modelMessages,
-      system: CODEFOX_SYSTEM_PROMPT,
+      system: createSystemPrompt(),
       tools,
       temperature: 0.7,
     });

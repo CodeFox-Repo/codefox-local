@@ -16,6 +16,7 @@ An AI-powered local website project generator that allows users to create comple
 ## Coding Standards
 
 - **No `any` type**: Avoid using `any` type in the project. Always use explicit types or proper TypeScript generics.
+- **No decorative comments**: Avoid using decorative banner-style comments like `// ==================== SECTION NAME ====================`. Use simple, concise comments instead.
 
 ## Development Environment
 
