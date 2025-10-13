@@ -8,28 +8,25 @@ import {
   renderToolTryStartDevServer,
   renderToolDefault,
 } from ".";
-import type {
-  WriteFileInput,
-  WriteFileOutput,
-  ExecuteCommandInput,
-  ExecuteCommandOutput,
-  SetPreviewUrlInput,
-  SetPreviewUrlOutput,
-  TryStartDevServerInput,
-  TryStartDevServerOutput,
-} from "@/lib/tool-definitions";
+import type { RenderResult } from "./types";
 
 interface ToolCallProps {
   toolName: string;
   toolPart: UIMessagePart<UIDataTypes, UITools>;
 }
 
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
+type ToolRenderer = (params: {
+  input: unknown;
+  output: unknown;
+  state: "pending" | "completed" | "error";
+}) => RenderResult;
+
+const toolMap: Record<string, ToolRenderer> = {
+  writeFile: renderToolWriteFile as ToolRenderer,
+  executeCommand: renderToolExecuteCommand as ToolRenderer,
+  setPreviewUrl: renderToolSetPreviewUrl as ToolRenderer,
+  tryStartDevServer: renderToolTryStartDevServer as ToolRenderer,
+};
 
 function getToolState(part: UIMessagePart<UIDataTypes, UITools>): "pending" | "completed" | "error" {
   const state = (part as Record<string, unknown>).state as string | undefined;
@@ -50,7 +47,9 @@ function renderTool(
 ): RenderResult {
   const part = toolPart as Record<string, unknown>;
   const input = part.input || part.args;
-  if(!input) {
+  const output = part.output;
+
+  if (!input) {
     return {
       icon: ChevronRight,
       iconColor: 'text-muted-foreground',
@@ -58,37 +57,13 @@ function renderTool(
       content: null,
     };
   }
-  const output = part.output;
 
-
-  switch (toolName) {
-    case 'writeFile':
-      return renderToolWriteFile(
-        input as WriteFileInput,
-        output as WriteFileOutput | undefined,
-        state
-      );
-    case 'executeCommand':
-      return renderToolExecuteCommand(
-        input as ExecuteCommandInput,
-        output as ExecuteCommandOutput | undefined,
-        state
-      );
-    case 'setPreviewUrl':
-      return renderToolSetPreviewUrl(
-        input as SetPreviewUrlInput,
-        output as SetPreviewUrlOutput | undefined,
-        state
-      );
-    case 'tryStartDevServer':
-      return renderToolTryStartDevServer(
-        input as TryStartDevServerInput,
-        output as TryStartDevServerOutput | undefined,
-        state
-      );
-    default:
-      return renderToolDefault(toolName, input, state);
+  const renderer = toolMap[toolName];
+  if (renderer) {
+    return renderer({ input, output, state });
   }
+
+  return renderToolDefault(toolName, { input, output, state });
 }
 
 export function ToolCall({ toolName, toolPart }: ToolCallProps) {

@@ -1,16 +1,16 @@
 import { Wrench, CheckCircle2, XCircle } from "lucide-react";
-
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
+import type { RenderResult } from "./types";
 
 export function renderToolDefault(
   toolName: string,
-  input: unknown,
-  state?: "pending" | "completed" | "error"
+  {
+    input,
+    state
+  }: {
+    input: unknown;
+    output: unknown;
+    state: "pending" | "completed" | "error";
+  }
 ): RenderResult {
   const isCompleted = state === 'completed';
   const isError = state === 'error';

@@ -1,19 +1,17 @@
 import { FileText, CheckCircle2, XCircle } from "lucide-react";
 import type { WriteFileInput, WriteFileOutput } from "@/lib/tool-definitions";
+import type { RenderResult } from "./types";
 
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
-
-export function renderToolWriteFile(
-  input: WriteFileInput,
-  output?: WriteFileOutput,
-  state?: "pending" | "completed" | "error"
-): RenderResult {
-  if (!input.content) {
+export function renderToolWriteFile({
+  input,
+  output,
+  state
+}: {
+  input: WriteFileInput;
+  output: WriteFileOutput | undefined;
+  state: "pending" | "completed" | "error";
+}): RenderResult {
+  if (!input?.content) {
     return {
       icon: FileText,
       iconColor: 'text-muted-foreground',

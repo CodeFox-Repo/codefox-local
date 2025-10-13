@@ -1,19 +1,18 @@
 import { Monitor, CheckCircle2, XCircle } from "lucide-react";
 import type { SetPreviewUrlInput, SetPreviewUrlOutput } from "@/lib/tool-definitions";
+import type { RenderResult } from "./types";
 
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
+export function renderToolSetPreviewUrl({
+  input,
+  output,
+  state
+}: {
+  input: SetPreviewUrlInput;
+  output: SetPreviewUrlOutput | undefined;
+  state: "pending" | "completed" | "error";
+}): RenderResult {
 
-export function renderToolSetPreviewUrl(
-  input: SetPreviewUrlInput,
-  output?: SetPreviewUrlOutput,
-  state?: "pending" | "completed" | "error"
-): RenderResult {
-  if (!input.url) {
+  if (!input?.url) {
     return {
       icon: Monitor,
       iconColor: 'text-muted-foreground',

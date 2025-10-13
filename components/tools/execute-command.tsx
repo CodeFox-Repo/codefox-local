@@ -1,19 +1,17 @@
 import { Terminal, CheckCircle2, XCircle } from "lucide-react";
 import type { ExecuteCommandInput, ExecuteCommandOutput } from "@/lib/tool-definitions";
+import type { RenderResult } from "./types";
 
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
-
-export function renderToolExecuteCommand(
-  input: ExecuteCommandInput,
-  output?: ExecuteCommandOutput,
-  state?: "pending" | "completed" | "error"
-): RenderResult {
-  if (!input.command) {
+export function renderToolExecuteCommand({
+  input,
+  output,
+  state
+}: {
+  input: ExecuteCommandInput;
+  output: ExecuteCommandOutput | undefined;
+  state: "pending" | "completed" | "error";
+}): RenderResult {
+  if (!input?.command) {
     return {
       icon: Terminal,
       iconColor: 'text-muted-foreground',

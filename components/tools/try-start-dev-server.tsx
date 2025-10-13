@@ -1,18 +1,16 @@
 import { PlayCircle, CheckCircle2, XCircle } from "lucide-react";
 import type { TryStartDevServerInput, TryStartDevServerOutput } from "@/lib/tool-definitions";
+import type { RenderResult } from "./types";
 
-interface RenderResult {
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  title: React.ReactNode;
-  content: React.ReactNode;
-}
-
-export function renderToolTryStartDevServer(
-  input: TryStartDevServerInput,
-  output?: TryStartDevServerOutput,
-  state?: "pending" | "completed" | "error"
-): RenderResult {
+export function renderToolTryStartDevServer({
+  input,
+  output,
+  state
+}: {
+  input: TryStartDevServerInput;
+  output: TryStartDevServerOutput | undefined;
+  state: "pending" | "completed" | "error";
+}): RenderResult {
   const isCompleted = state === 'completed';
   const isError = state === 'error';
 
