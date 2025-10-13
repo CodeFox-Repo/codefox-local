@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push validations..."
+echo ""
+
+echo "📋 Installing dependencies..."
+bun install || exit 1
+echo "✅ Dependencies installed"
+echo ""
+
+echo "📋 Building project..."
+bun run build || exit 1
+echo "✅ Build successful"
+echo ""
+
+echo "✨ All checks passed! Pushing..."
