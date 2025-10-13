@@ -33,7 +33,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-4 p-4" ref={scrollRef}>
+      <div className="space-y-4 p-4 min-w-0" ref={scrollRef}>
         {messages.map((message, index) => {
           const isLastMessage = index === messages.length - 1;
           const isStreamingLastAssistant = isLastMessage && message.role === 'assistant' && isLoading;
@@ -51,7 +51,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
           const toolParts = message.parts.filter(isToolOrDynamicToolUIPart);
 
           return (
-            <div key={message.id} className="space-y-2">
+            <div key={message.id} className="space-y-2 min-w-0">
               {textContent && (
                 <ChatMessage
                   role={message.role as "user" | "assistant"}

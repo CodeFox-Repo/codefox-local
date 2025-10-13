@@ -32,13 +32,13 @@ export function ChatContainer({
   const setIsSettingsOpen = useSettingsStore((state) => state.setIsSettingsOpen);
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col h-full bg-background min-w-0">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b min-w-0">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <ProjectHistory />
-          <h1 className="text-base font-semibold">Website Generator</h1>
+          <h1 className="text-base font-semibold whitespace-nowrap">Website Generator</h1>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -60,11 +60,11 @@ export function ChatContainer({
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-w-0">
         <MessageList messages={messages} isLoading={isLoading} />
       </div>
 
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 min-w-0">
         <ChatInput
           value={input}
           onChange={onInputChange}

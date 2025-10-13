@@ -54,8 +54,8 @@ export function ChatInput({
   }, [value]);
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
-      <div className="flex gap-2 items-start">
+    <form onSubmit={handleSubmit} className="p-4 border-t bg-background min-w-0">
+      <div className="flex gap-2 items-start min-w-0">
         <Textarea
           ref={textareaRef}
           value={value}
@@ -63,7 +63,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
-          className="max-h-[200px] resize-none"
+          className="max-h-[200px] resize-none min-w-0 flex-1"
           rows={2}
         />
         {isLoading && onPause ? (

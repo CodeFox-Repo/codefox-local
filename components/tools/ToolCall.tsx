@@ -68,19 +68,19 @@ export function ToolCall({ toolName, toolPart }: ToolCallProps) {
   const state = getToolState(toolPart);
 
   return (
-    <div className="mb-3 text-sm">
+    <div className="mb-3 text-sm min-w-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-muted-foreground mb-2 hover:text-foreground transition-colors w-full text-left"
+        className="flex items-center gap-2 text-muted-foreground mb-2 hover:text-foreground transition-colors w-full text-left min-w-0"
       >
         <ChevronRight
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+          className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
         />
         {getStateIcon(state)}
-        <span className="font-medium">{getToolTitle(toolName, input, state)}</span>
+        <span className="font-medium truncate">{getToolTitle(toolName, input, state)}</span>
       </button>
       {isOpen && (
-        <div className="border-l-2 border-muted pl-4 ml-6">
+        <div className="border-l-2 border-muted pl-4 ml-6 min-w-0">
           {renderTool(toolName, toolPart)}
         </div>
       )}

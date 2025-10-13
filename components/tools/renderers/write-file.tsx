@@ -16,7 +16,7 @@ export function renderToolWriteFile(
         </div>
       )}
 
-      <pre className="text-xs font-mono bg-muted/50 p-3 rounded border overflow-x-auto max-h-64 text-foreground/80">
+      <pre className="text-xs font-mono bg-muted/50 p-3 rounded border overflow-auto max-h-64 text-foreground/80 whitespace-pre-wrap break-words">
 {input.content}</pre>
     </div>
   );

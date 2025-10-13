@@ -25,11 +25,11 @@ export function renderToolExecuteCommand(
             </div>
           )}
           {output.stdout && (
-            <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-64 text-foreground/80">
+            <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-auto max-h-64 text-foreground/80 whitespace-pre-wrap break-words">
 {output.stdout}</pre>
           )}
           {output.stderr && (
-            <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-x-auto max-h-64 text-foreground/70">
+            <pre className="text-xs font-mono bg-muted/50 p-2 rounded border overflow-auto max-h-64 text-foreground/70 whitespace-pre-wrap break-words">
 {output.stderr}</pre>
           )}
           {output.error && (

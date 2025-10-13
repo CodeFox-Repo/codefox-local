@@ -57,14 +57,20 @@ export default function Home() {
 
   // Restore messages when project switches (only when projectId changes)
   useEffect(() => {
+
     if (!currentProjectId) {
       setAIMessages([]);
       return;
     }
 
-    // Get the current stored messages for this project
-    const currentStoredMessages = useProjectStore.getState().messages;
-    setAIMessages(currentStoredMessages);
+    const snapshot = useProjectStore.getState().projectSnapshots[currentProjectId];
+    if (!snapshot) {
+      setAIMessages([]);
+      return;
+    }
+
+    console.log('[PageEffect] Restoring messages for project:', currentProjectId, 'messages:', snapshot.messages.length);
+    setAIMessages(snapshot.messages);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProjectId]); // Only depend on projectId, not storedMessages
 

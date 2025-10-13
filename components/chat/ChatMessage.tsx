@@ -24,8 +24,8 @@ export function ChatMessage({ role, content, isLoading = false }: ChatMessagePro
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 overflow-hidden">
-          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90">
+        <div className="flex-1 min-w-0">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 break-words">
             <Response>{content}</Response>
           </div>
         </div>
@@ -36,7 +36,7 @@ export function ChatMessage({ role, content, isLoading = false }: ChatMessagePro
   // Assistant message without avatar, just text
   return (
     <div className="py-3">
-      <div className="prose prose-sm dark:prose-invert max-w-none">
+      <div className="prose prose-sm dark:prose-invert max-w-none break-words">
         {isLoading && !content ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

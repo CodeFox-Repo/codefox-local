@@ -140,13 +140,14 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
       switchToProject: (projectId: string) => {
         const snapshot = get().projectSnapshots[projectId];
         if (!snapshot) {
-          console.warn('Project snapshot not found:', projectId);
+          console.warn('[Store] Project snapshot not found:', projectId);
           return;
         }
 
+
         // Save current project snapshot first
         const currentId = get().currentProjectId;
-        if (currentId) {
+        if (currentId && currentId !== projectId) {
           get().saveCurrentSnapshot();
         }
 
@@ -167,6 +168,7 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
             },
           },
         });
+        console.log('[Store] Project switched successfully');
       },
 
       saveCurrentSnapshot: () => {
