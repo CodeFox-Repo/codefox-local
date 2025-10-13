@@ -20,7 +20,6 @@ export function ChatInput({
   onChange,
   onSubmit,
   isLoading,
-  status,
   onPause,
   placeholder = "Describe the website you want to create..."
 }: ChatInputProps) {

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import type { UIDataTypes, UIMessagePart, UITools } from "ai";
 import { getStateIcon } from "./tool-icons";
 import { getToolTitle } from "./tool-titles";
@@ -60,21 +62,28 @@ function renderTool(toolName: string, toolPart: UIMessagePart<UIDataTypes, UIToo
 }
 
 export function ToolCall({ toolName, toolPart }: ToolCallProps) {
+  const [isOpen, setIsOpen] = useState(true);
   const part = toolPart as Record<string, unknown>;
   const input = part.input || part.args;
   const state = getToolState(toolPart);
 
   return (
     <div className="mb-3 text-sm">
-      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-        <div className="flex items-center gap-1.5">
-          {getStateIcon(state)}
-          <span className="font-medium">{getToolTitle(toolName, input, state)}</span>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 text-muted-foreground mb-2 hover:text-foreground transition-colors w-full text-left"
+      >
+        <ChevronRight
+          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+        />
+        {getStateIcon(state)}
+        <span className="font-medium">{getToolTitle(toolName, input, state)}</span>
+      </button>
+      {isOpen && (
+        <div className="border-l-2 border-muted pl-4 ml-6">
+          {renderTool(toolName, toolPart)}
         </div>
-      </div>
-      <div className="border-l-2 border-muted pl-4">
-        {renderTool(toolName, toolPart)}
-      </div>
+      )}
     </div>
   );
 }
