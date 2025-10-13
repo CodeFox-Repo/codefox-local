@@ -4,25 +4,8 @@ import { useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { ToolCall } from "@/components/tools/ToolCall";
-import type { UIMessage, UIMessagePart } from "ai";
-
-// Helper to check if part is a tool-related part
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isToolPart(part: UIMessagePart<any, any>): boolean {
-  return part.type.startsWith('tool-') || part.type === 'dynamic-tool';
-}
-
-// Extract tool name from part type (e.g., "tool-writeFile" -> "writeFile")
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getToolName(part: UIMessagePart<any, any>): string | null {
-  if (part.type === 'dynamic-tool' && 'toolName' in part) {
-    return part.toolName as string;
-  }
-  if (part.type.startsWith('tool-')) {
-    return part.type.substring(5); // Remove "tool-" prefix
-  }
-  return null;
-}
+import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from "ai";
+import type { UIMessage } from "ai";
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -65,7 +48,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
             .join("");
 
           // Extract tool-related parts
-          const toolParts = message.parts.filter(isToolPart);
+          const toolParts = message.parts.filter(isToolOrDynamicToolUIPart);
 
           return (
             <div key={message.id} className="space-y-2">
@@ -78,29 +61,15 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
               )}
 
               {/* Render tool calls */}
-              {toolParts.map((toolPart, idx) => {
-                const toolName = getToolName(toolPart);
-                if (!toolName) return null;
-                console.log(toolPart)
-                const part = toolPart as Record<string, unknown>;
-                const toolCallId = part.toolCallId as string | undefined;
-                const state = part.state as string | undefined;
-
-                // Determine tool state
-                let toolState: "pending" | "completed" | "error" = "pending";
-                if (state === "output-error" || state === "error") {
-                  toolState = "error";
-                } else if (state === "result" || part.output !== undefined) {
-                  toolState = "completed";
-                }
+              {toolParts.map((toolPart) => {
+                const toolName = getToolOrDynamicToolName(toolPart);
+                const toolCallId = toolPart.toolCallId;
 
                 return (
                   <ToolCall
-                    key={toolCallId || `${message.id}-tool-${idx}`}
+                    key={toolCallId}
                     toolName={toolName}
-                    input={part.input || part.args}
-                    output={part.output}
-                    state={toolState}
+                    toolPart={toolPart}
                   />
                 );
               })}

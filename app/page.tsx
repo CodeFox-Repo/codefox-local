@@ -37,7 +37,7 @@ export default function Home() {
     []
   );
 
-  const { messages, sendMessage, addToolResult, status, setMessages: setAIMessages } = useChat({
+  const { messages, sendMessage, addToolResult, status, setMessages: setAIMessages, stop } = useChat({
     transport,
     onError: (error) => {
       console.error("Chat error:", error);
@@ -136,7 +136,30 @@ export default function Home() {
     }
   };
 
-  const isLoading = status === "streaming";
+  const handleNewProject = () => {
+    // Save current snapshot first
+    const currentId = useProjectStore.getState().currentProjectId;
+    if (currentId) {
+      useProjectStore.getState().saveCurrentSnapshot();
+    }
+
+    // Clear current project and messages
+    useProjectStore.setState({
+      currentProjectId: null,
+      messages: [],
+      input: '',
+    });
+    setAIMessages([]);
+    setInput("");
+    toast.info("Ready to create a new project");
+  };
+
+  const handleStop = () => {
+    stop();
+    toast.info("Stream stopped");
+  };
+
+  const isLoading = status === "streaming" || status === "submitted";
 
   return (
     <>
@@ -146,8 +169,11 @@ export default function Home() {
             messages={messages.filter((msg) => msg.role !== "system")}
             input={input}
             isLoading={isLoading}
+            status={status}
             onInputChange={handleInputChange}
             onSubmit={handleSubmit}
+            onNew={handleNewProject}
+            onStop={handleStop}
           />
         }
         rightPanel={<IframeContainer />}

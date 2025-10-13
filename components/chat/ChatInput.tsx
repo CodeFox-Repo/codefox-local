@@ -3,13 +3,15 @@
 import { useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { Send, StopCircle } from "lucide-react";
 
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (value: string) => void;
   isLoading?: boolean;
+  status?: 'submitted' | 'streaming' | 'ready' | 'error';
+  onPause?: () => void;
   placeholder?: string;
 }
 
@@ -18,6 +20,8 @@ export function ChatInput({
   onChange,
   onSubmit,
   isLoading,
+  status,
+  onPause,
   placeholder = "Describe the website you want to create..."
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,6 +30,12 @@ export function ChatInput({
     e.preventDefault();
     if (value.trim() && !isLoading) {
       onSubmit(value);
+    }
+  };
+
+  const handleStop = () => {
+    if (onPause) {
+      onPause();
     }
   };
 
@@ -54,17 +64,30 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
-          className="min-h-[44px] max-h-[200px] resize-none"
+          className="max-h-[200px] resize-none"
           rows={2}
         />
-        <Button
-          type="submit"
-          disabled={!value.trim() || isLoading}
-          size="icon"
-          className="h-14.5 w-11 shrink-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+        {isLoading && onPause ? (
+          <Button
+            type="button"
+            onClick={handleStop}
+            variant="destructive"
+            size="icon"
+            className="h-14.5 w-11 shrink-0"
+            title="Stop Generation"
+          >
+            <StopCircle className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={!value.trim() || isLoading}
+            size="icon"
+            className="h-14.5 w-11 shrink-0"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       <p className="text-xs text-muted-foreground mt-2">
         Press Enter to send, Shift + Enter for new line
