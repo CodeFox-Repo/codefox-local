@@ -46,7 +46,7 @@ export function ChatInput({
 
   return (
     <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
-      <div className="flex gap-2 items-end">
+      <div className="flex gap-2 items-start">
         <Textarea
           ref={textareaRef}
           value={value}
@@ -54,14 +54,14 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading}
-          className="min-h-[60px] max-h-[200px] resize-none"
+          className="min-h-[44px] max-h-[200px] resize-none"
           rows={2}
         />
         <Button
           type="submit"
           disabled={!value.trim() || isLoading}
           size="icon"
-          className="h-10 w-10 shrink-0"
+          className="h-14.5 w-11 shrink-0"
         >
           <Send className="h-4 w-4" />
         </Button>
