@@ -1,29 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProjectManager } from '@/lib/project-manager';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
 
 const projectManager = ProjectManager.getInstance();
 
-const MAX_TITLE_LENGTH = 60;
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY || '',
+});
 
-function buildTitle(prompt: string): string | null {
+async function buildTitle(prompt: string): Promise<string | null> {
   if (!prompt) return null;
 
-  const cleaned = prompt.replace(/\s+/g, ' ').replace(/[^\w\s-:,.'"]/g, '').trim();
-  if (!cleaned) return null;
+  try {
+    const result = await generateText({
+      model: openrouter.chat('openai/gpt-5-nano'),
+      prompt: `Generate a concise, descriptive title (max 60 characters) for a web project based on this user query: "${prompt}". Return ONLY the title text, nothing else. Do not use quotes or punctuation at the end.`,
+      temperature: 0.7,
+    });
 
-  let candidate = cleaned.slice(0, MAX_TITLE_LENGTH).trim();
-  if (cleaned.length > MAX_TITLE_LENGTH) {
-    candidate = candidate.replace(/[,.:;!?-]+$/, '').trim();
-    candidate = `${candidate}…`;
-  } else {
-    candidate = candidate.replace(/[,.:;!?-]+$/, '').trim();
-  }
-
-  if (!candidate) {
+    const title = result.text.trim();
+    return title || null;
+  } catch (error) {
+    console.error('Failed to generate title with AI:', error);
     return null;
   }
-
-  return candidate.charAt(0).toUpperCase() + candidate.slice(1);
 }
 
 export async function POST(req: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const title = buildTitle(prompt);
+    const title = await buildTitle(prompt);
 
     projectManager.setProjectTitle(projectId, title);
 
