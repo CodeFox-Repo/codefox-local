@@ -16,17 +16,17 @@ export function ChatMessage({ role, content, isLoading = false }: ChatMessagePro
   if (isUser) {
     // User message - simplified with small avatar, no background
     return (
-      <div className="flex gap-3 py-3">
-        <Avatar className="h-6 w-6 shrink-0 mt-0.5">
+      <div className="flex items-start gap-3">
+        <Avatar className="h-7 w-7 shrink-0">
           <AvatarFallback className="bg-muted text-muted-foreground">
-            <User className="h-3 w-3" />
+            <User className="h-3.5 w-3.5" />
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 min-w-0">
-          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 break-words">
-            <Response>{content}</Response>
-          </div>
+        <div className="flex-1 min-w-0 mt-0.5 leading-tight">
+          <Response className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 break-words leading-tight [&>p]:mt-0 [&>p]:leading-tight [&>*+*]:mt-3">
+            {content}
+          </Response>
         </div>
       </div>
     );
@@ -34,7 +34,7 @@ export function ChatMessage({ role, content, isLoading = false }: ChatMessagePro
 
   // Assistant message without avatar, just text
   return (
-    <div className="py-3">
+    <div className="">
       <div className="prose prose-sm dark:prose-invert max-w-none break-words">
         {isLoading && !content ? (
           <div className="flex items-center gap-2 text-muted-foreground">
