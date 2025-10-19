@@ -36,7 +36,7 @@ export function MessageList({ messages, isLoading, onPromptClick, onShowHistory,
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-4 p-4 min-w-0" ref={scrollRef}>
+      <div className="space-y-4 p-4 pb-48 min-w-0" ref={scrollRef}>
         {messages.map((message, index) => {
           const isLastMessage = index === messages.length - 1;
           const isStreamingLastAssistant = isLastMessage && message.role === 'assistant' && isLoading;

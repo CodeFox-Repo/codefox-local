@@ -54,10 +54,10 @@ export function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-background px-4 pb-6 pt-4 min-w-0"
+      className="px-4 pb-6 pt-12 min-w-0"
     >
       <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-2xl border border-foreground/20 bg-muted/50 focus-within:border-foreground/30 transition-colors p-5">
+        <div className="rounded-2xl border border-foreground/20 bg-background focus-within:border-foreground/30 transition-colors p-5 shadow-lg">
           <Textarea
             ref={textareaRef}
             value={value}

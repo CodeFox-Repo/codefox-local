@@ -87,28 +87,28 @@ export function ChatContainer({
           />
         </div>
       ) : (
-        <>
-          <div className="flex-1 overflow-hidden min-w-0">
-            <MessageList
-              messages={messages}
-              isLoading={isLoading}
-              onPromptClick={onPromptClick}
-              onShowHistory={handleShowHistory}
-              onSelectProject={handleHideHistory}
-            />
+        <div className="flex-1 overflow-hidden min-w-0 relative">
+          <MessageList
+            messages={messages}
+            isLoading={isLoading}
+            onPromptClick={onPromptClick}
+            onShowHistory={handleShowHistory}
+            onSelectProject={handleHideHistory}
+          />
+          
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+            <div className="pointer-events-auto">
+              <ChatInput
+                value={input}
+                onChange={onInputChange}
+                onSubmit={onSubmit}
+                isLoading={isLoading}
+                status={status}
+                onPause={onStop}
+              />
+            </div>
           </div>
-
-          <div className="flex-shrink-0 min-w-0">
-            <ChatInput
-              value={input}
-              onChange={onInputChange}
-              onSubmit={onSubmit}
-              isLoading={isLoading}
-              status={status}
-              onPause={onStop}
-            />
-          </div>
-        </>
+        </div>
       )}
     </div>
   );
