@@ -5,7 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { ChatContainer } from "@/components/chat/chat-container";
-import { IframeContainer } from "@/components/iframe/iframe-container";
+import { RightPanel } from "@/components/preview/right-panel";
 import { MainLayout } from "@/components/layout/main-layout";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
@@ -209,7 +209,7 @@ export default function Home() {
             onPromptClick={handlePromptClick}
           />
         }
-        rightPanel={<IframeContainer />}
+        rightPanel={<RightPanel />}
       />
       <SettingsModal />
     </>
