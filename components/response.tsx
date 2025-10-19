@@ -30,7 +30,7 @@ export const Response = memo(
         className
       )}
       components={{
-        code: ({ className, children, ...props }: any) => {
+        code: ({ className, children, ...props }) => {
           const match = /language-(\w+)/.exec(className || '');
           const language = match ? match[1] : 'text';
           const isInline = !match;
