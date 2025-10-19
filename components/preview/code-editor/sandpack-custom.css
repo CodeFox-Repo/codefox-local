@@ -1,0 +1,192 @@
+/* Custom Sandpack styles matching project primary color */
+
+/* Layout - ensure full height, never max-height */
+.sp-layout,
+.sp-layout * {
+  max-height: none !important;
+}
+
+.sp-layout {
+  height: 100% !important;
+  display: flex !important;
+  flex: 1 !important;
+}
+
+.sp-layout > * {
+  height: 100% !important;
+  flex: 1 !important;
+}
+
+/* Ensure SandpackProvider wrapper fills height */
+.sp-wrapper,
+.sp-provider {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* File Explorer */
+.sandpack-custom-explorer {
+  background: rgb(var(--card)) !important;
+  border-right: 1px solid rgb(var(--border)) !important;
+  height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.sandpack-custom-explorer button[data-active="true"] {
+  background: rgb(var(--primary) / 0.1) !important;
+  color: rgb(var(--primary)) !important;
+  border-left: 2px solid rgb(var(--primary)) !important;
+  font-weight: 500;
+}
+
+.sandpack-custom-explorer button:hover:not([data-active="true"]) {
+  background: rgb(var(--muted)) !important;
+}
+
+/* Code Editor */
+.sandpack-custom-editor {
+  background: rgb(var(--background)) !important;
+  height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Preview */
+.sandpack-custom-preview {
+  height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: white !important;
+}
+
+.sandpack-custom-preview iframe {
+  height: 100% !important;
+  max-height: none !important;
+  border: none !important;
+}
+
+/* Ensure all internal containers also fill height */
+.sandpack-custom-explorer .sp-file-explorer,
+.sandpack-custom-editor .sp-code-editor,
+.sandpack-custom-editor .sp-stack,
+.sandpack-custom-explorer .sp-c-euXojQ,
+.sandpack-custom-editor .sp-c-euXojQ {
+  height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+}
+
+.sandpack-custom-editor .cm-editor,
+.sandpack-custom-editor .cm-scroller {
+  flex: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+.sp-file-explorer-list {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  max-height: none !important;
+}
+
+/* Override any flex or container height restrictions */
+.sp-layout,
+.sp-layout > div,
+.sandpack-custom-explorer,
+.sandpack-custom-editor {
+  min-height: 100% !important;
+  flex: 1 !important;
+}
+
+/* Ensure code editor content fills available space */
+.sandpack-custom-editor .cm-content {
+  min-height: 100% !important;
+}
+
+/* File explorer should expand to fill */
+.sandpack-custom-explorer .sp-c-cOmIbt {
+  flex: 1 !important;
+  height: 100% !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+}
+
+/* Additional overrides for all potentially restrictive elements */
+.sandpack-custom-editor .sp-c-gtcpyq,
+.sandpack-custom-editor .sp-c-jkvvao,
+.sandpack-custom-editor [role="tabpanel"],
+.sandpack-custom-explorer [class*="sp-c-"] {
+  max-height: none !important;
+}
+
+/* Ensure the tab panels fill height */
+.sandpack-custom-editor [id$="-tab-panel"] {
+  height: 100% !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.sandpack-custom-editor .cm-gutters {
+  background: rgb(var(--muted) / 0.3) !important;
+  border-right: 1px solid rgb(var(--border)) !important;
+}
+
+.sandpack-custom-editor .cm-activeLineGutter {
+  background: rgb(var(--primary) / 0.1) !important;
+}
+
+/* Tabs */
+.sandpack-custom-editor .sp-tabs {
+  background: rgb(var(--muted) / 0.3) !important;
+  border-bottom: 1px solid rgb(var(--border)) !important;
+}
+
+.sandpack-custom-editor .sp-tabs button[data-active="true"] {
+  background: rgb(var(--background)) !important;
+  color: rgb(var(--primary)) !important;
+  border-bottom: 2px solid rgb(var(--primary)) !important;
+  font-weight: 500;
+}
+
+.sandpack-custom-editor .sp-tabs button:hover:not([data-active="true"]) {
+  background: rgb(var(--muted)) !important;
+}
+
+/* Selection */
+.sandpack-custom-editor .cm-selectionBackground {
+  background: rgb(var(--primary) / 0.2) !important;
+}
+
+.sandpack-custom-editor .cm-cursor {
+  border-left-color: rgb(var(--primary)) !important;
+}
+
+/* Scrollbar */
+.sandpack-custom-explorer::-webkit-scrollbar,
+.sandpack-custom-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sandpack-custom-explorer::-webkit-scrollbar-thumb,
+.sandpack-custom-editor::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+.sandpack-custom-explorer::-webkit-scrollbar-thumb:hover,
+.sandpack-custom-editor::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--muted-foreground) / 0.5);
+}
+
+

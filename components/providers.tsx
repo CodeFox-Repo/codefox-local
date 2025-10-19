@@ -1,7 +1,6 @@
 'use client';
 
 import { ThemeProvider } from "@/components/theme-provider";
-import { SandpackProvider } from "@codesandbox/sandpack-react";
 import { ReactNode } from "react";
 
 interface ProvidersProps {
@@ -16,13 +15,9 @@ export function Providers({ children }: ProvidersProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <SandpackProvider
-        template="react-ts"
-        theme="dark"
-      >
-        {children}
-      </SandpackProvider>
+      {children}
     </ThemeProvider>
   );
 }
+
 
