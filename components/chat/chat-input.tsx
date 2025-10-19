@@ -54,10 +54,10 @@ export function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="px-4 pb-6 pt-12 min-w-0"
+      className="px-4 pb-6 pt-0 min-w-0"
     >
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-2xl border border-foreground/20 bg-background focus-within:border-foreground/30 transition-colors p-5 shadow-lg">
+      <div className="mx-auto w-full max-w-3xl pointer-events-auto">
+        <div className="rounded-2xl border border-foreground/20 bg-background focus-within:border-foreground/30 transition-colors p-5 shadow-lg relative">
           <Textarea
             ref={textareaRef}
             value={value}
@@ -66,35 +66,34 @@ export function ChatInput({
             placeholder={placeholder}
             disabled={isLoading}
             aria-label="Chat message input"
-            className="max-h-[120px] w-full resize-none border-0 px-0 py-0 bg-transparent text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent disabled:opacity-60 disabled:cursor-not-allowed"
-            rows={2}
+            className="max-h-[120px] w-full resize-none border-0 px-0 py-0 bg-transparent text-sm leading-normal shadow-none focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+            rows={1}
           />
 
-          <div className="flex items-center justify-end gap-2 bg-transparent mt-3">
-            <div className="flex items-center gap-2">
-              {isStreaming && onPause && (
-                <button
-                  type="button"
-                  onClick={onPause}
-                  aria-label="Stop generating response"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive/15 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-                >
-                  <Square className="h-4 w-4" fill="currentColor" />
-                </button>
-              )}
-
-              {!isStreaming && (
-                <Button
-                  type="submit"
-                  disabled={isSubmitDisabled}
-                  variant="default"
-                  className="rounded-xl"
-                  size="icon"
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+          <div className="absolute bottom-3 right-3">
+            {isStreaming && onPause ? (
+              <Button
+                type="button"
+                onClick={onPause}
+                variant="ghost"
+                size="icon"
+                className="rounded-2xl h-8 w-8 text-destructive hover:bg-destructive/15 hover:text-destructive"
+                aria-label="Stop generating response"
+              >
+                <Square className="h-3.5 w-3.5" fill="currentColor" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isSubmitDisabled}
+                variant="default"
+                size="icon"
+                className="rounded-2xl h-8 w-8"
+                aria-label="Send message"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

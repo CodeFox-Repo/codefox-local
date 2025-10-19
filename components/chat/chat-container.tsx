@@ -97,16 +97,14 @@ export function ChatContainer({
           />
           
           <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
-            <div className="pointer-events-auto">
-              <ChatInput
-                value={input}
-                onChange={onInputChange}
-                onSubmit={onSubmit}
-                isLoading={isLoading}
-                status={status}
-                onPause={onStop}
-              />
-            </div>
+            <ChatInput
+              value={input}
+              onChange={onInputChange}
+              onSubmit={onSubmit}
+              isLoading={isLoading}
+              status={status}
+              onPause={onStop}
+            />
           </div>
         </div>
       )}
