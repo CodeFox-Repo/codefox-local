@@ -61,19 +61,18 @@ export function HistoryView({ onBack, onSelectProject }: HistoryViewProps) {
                     onSelectProject?.();
                   }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-1.5 rounded bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
-                      <Code className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm mb-0.5 truncate">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 rounded bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                        <Code className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="font-semibold text-sm truncate">
                         {label}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        Last accessed{" "}
-                        {formatDistanceToNow(lastAccessed, { addSuffix: true })}
-                      </p>
                     </div>
+                    <p className="text-xs text-muted-foreground shrink-0">
+                      {formatDistanceToNow(lastAccessed, { addSuffix: true })}
+                    </p>
                   </div>
                 </Card>
               );
