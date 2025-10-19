@@ -21,7 +21,7 @@ export function MessageActions({ content, onRegenerate, onEdit, role }: MessageA
       setCopied(true);
       toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to copy");
     }
   };
