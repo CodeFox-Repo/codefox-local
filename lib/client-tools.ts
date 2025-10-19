@@ -1,7 +1,7 @@
 // Client-side helper for project creation and preview management
 
 import type { ProjectInfo } from './project-manager';
-import { useProjectStore } from './store';
+import { getRightPanelRef } from './preview-ref';
 
 // Create a project via API
 export async function createProject(name: string): Promise<ProjectInfo> {
@@ -24,18 +24,19 @@ export async function createProject(name: string): Promise<ProjectInfo> {
   return data.project;
 }
 
-// Set the preview URL in the iframe
+// Set the preview URL via RightPanel ref
 export async function setPreviewUrl(url: string): Promise<{
   success: boolean;
   message: string;
 }> {
-  // Validate URL format (must be localhost)
-  if (!url.match(/^https?:\/\/localhost:\d+/)) {
-    throw new Error('Invalid preview URL format. Must be http://localhost:port');
+  const rightPanelRef = getRightPanelRef();
+  
+  if (!rightPanelRef) {
+    throw new Error('RightPanel ref not available');
   }
 
-  // Update store
-  useProjectStore.getState().setIframeUrl(url);
+  // Update preview URL through ref
+  rightPanelRef.setUrl(url);
 
   return {
     success: true,

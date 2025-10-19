@@ -18,10 +18,6 @@ interface ProjectSnapshot {
 
   // Chat state snapshot
   messages: UIMessage[];
-
-  // Preview state snapshot
-  // @deprecated TODO: Remove later - replaced by auto-detected devServer.serverUrl
-  iframeUrl: string;
 }
 
 // Dev server state
@@ -43,8 +39,6 @@ interface ProjectGeneratorStore {
   messages: UIMessage[];
   input: string;
   isLoading: boolean;
-  // @deprecated TODO: Remove later - replaced by devServer.serverUrl
-  iframeUrl: string;
 
   // Dev server state - automatically managed
   devServer: DevServerState;
@@ -67,9 +61,6 @@ interface ProjectGeneratorStore {
   setIsLoading: (isLoading: boolean) => void;
   clearMessages: () => void;
 
-  // @deprecated TODO: Remove later - use devServer actions instead
-  setIframeUrl: (url: string) => void;
-
   // Actions - Dev Server
   setDevServer: (projectId: string, url: string, pid: number) => void;
   clearDevServer: () => void;
@@ -85,7 +76,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
       messages: [],
       input: '',
       isLoading: false,
-      iframeUrl: '',
       devServer: {
         projectId: null,
         serverUrl: null,
@@ -111,7 +101,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
           // Restore project state
           set({
             messages: existingSnapshot.messages,
-            iframeUrl: existingSnapshot.iframeUrl,
             projectSnapshots: {
               ...get().projectSnapshots,
               [project.id]: {
@@ -124,14 +113,12 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
           // New project, clear state
           set({
             messages: [],
-            iframeUrl: '',
             projectSnapshots: {
               ...get().projectSnapshots,
               [project.id]: {
                 project,
                 lastAccessedAt: new Date(),
                 messages: [],
-                iframeUrl: '',
               },
             },
           });
@@ -161,7 +148,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
         set({
           currentProjectId: projectId,
           messages: snapshot.messages,
-          iframeUrl: snapshot.iframeUrl,
           projectSnapshots: {
             ...get().projectSnapshots,
             [projectId]: {
@@ -186,7 +172,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
             [currentId]: {
               ...currentSnapshot,
               messages: get().messages,
-              iframeUrl: get().iframeUrl,
               lastAccessedAt: new Date(),
             },
           },
@@ -205,7 +190,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
           set({
             currentProjectId: null,
             messages: [],
-            iframeUrl: '',
           });
         }
       },
@@ -215,7 +199,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
           projectSnapshots: {},
           currentProjectId: null,
           messages: [],
-          iframeUrl: '',
         });
       },
 
@@ -275,16 +258,6 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
 
       clearMessages: () => set({ messages: [] }),
 
-      // @deprecated TODO: Remove later - use devServer actions instead
-      setIframeUrl: (iframeUrl: string) => {
-        set({ iframeUrl });
-        // Auto-save snapshot
-        const currentId = get().currentProjectId;
-        if (currentId) {
-          setTimeout(() => get().saveCurrentSnapshot(), 100);
-        }
-      },
-
       // Dev Server Actions
       setDevServer: (projectId: string, url: string, pid: number) => {
         set({
@@ -322,7 +295,7 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
       partialize: (state) => ({
         // Only persist project snapshots
         projectSnapshots: state.projectSnapshots,
-        // Don't persist real-time state (messages, input, isLoading, iframeUrl)
+        // Don't persist real-time state (messages, input, isLoading)
       }),
       storage: createJSONStorage(() => ({
         getItem: (name) => {

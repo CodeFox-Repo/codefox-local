@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ExternalLink, Code, Eye, Loader2, XCircle, Lock, Globe } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,13 +14,34 @@ interface RightPanelProps {
   generatedCode?: string;
 }
 
-export function RightPanel({ generatedCode = "" }: RightPanelProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [key, setKey] = useState(0);
+export interface RightPanelRef {
+  setUrl: (url: string) => void;
+}
 
-  const devServer = useProjectStore((state) => state.devServer);
-  const previewUrl = devServer.serverUrl;
-  const serverStatus = devServer.status;
+export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
+  ({ generatedCode = "" }, ref) => {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [key, setKey] = useState(0);
+    const [showUrl, setShowUrl] = useState<string>("");
+    const [inputUrl, setInputUrl] = useState<string>("");
+
+    const devServer = useProjectStore((state) => state.devServer);
+    const previewUrl = devServer.serverUrl;
+    const serverStatus = devServer.status;
+
+    useImperativeHandle(ref, () => ({
+      setUrl: (url: string) => {
+        setShowUrl(url);
+        setInputUrl(url);
+      }
+    }));
+
+  useEffect(() => {
+    if (previewUrl) {
+      setShowUrl(previewUrl);
+      setInputUrl(previewUrl);
+    }
+  }, [previewUrl]);
 
   useEffect(() => {
     if (generatedCode && iframeRef.current) {
@@ -37,20 +58,24 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
     setKey(prev => prev + 1);
   };
 
-  const handleOpenInNewTab = () => {
-    if (previewUrl) {
-      window.open(previewUrl, '_blank');
-    } else if (generatedCode) {
-      const blob = new Blob([generatedCode], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+  const handleUrlSubmit = () => {
+    if (inputUrl.trim()) {
+      setShowUrl(inputUrl.trim());
+      setKey(prev => prev + 1);
     }
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleUrlSubmit();
+    }
+  };
+
 
   return (
     <Tabs defaultValue="preview" className="flex flex-col h-full gap-0">
       {/* Header: Tabs + Actions */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b">
+      <div className="flex-shrink-0 flex items-center justify-between px-2 py-3.5 border-b">
         <TabsList>
           <TabsTrigger value="preview">
             <Eye className="h-4 w-4 mr-2" />
@@ -67,52 +92,32 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
             Code
           </TabsTrigger>
         </TabsList>
-
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={!generatedCode && !previewUrl}
-            title="Refresh"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleOpenInNewTab}
-            disabled={!generatedCode && !previewUrl}
-            title="Open in new tab"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       {/* Body: Preview Tab */}
       <TabsContent value="preview" className="flex-1 m-0 overflow-hidden data-[state=active]:flex data-[state=active]:flex-col">
         <div className="flex flex-col h-full overflow-hidden">
           {/* Address Bar */}
-          <div className="flex-shrink-0 flex items-center gap-2 bg-muted/30 border-b px-3 py-2">
-            {previewUrl && previewUrl.startsWith('https://') ? (
+          <div className="flex-shrink-0 flex items-center gap-2 bg-muted/30 border-b px-5 py-2">
+            {showUrl && showUrl.startsWith('https://') ? (
               <Lock className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
             ) : (
               <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             )}
             <Input
-              value={previewUrl || ''}
-              readOnly
-              placeholder="No preview URL set"
-              className="flex-1 border-0 bg-background rounded px-2 py-1 h-auto text-xs font-mono focus-visible:ring-0 focus-visible:ring-offset-0 cursor-text select-all placeholder:text-muted-foreground placeholder:font-sans"
-              title={previewUrl || 'No preview URL'}
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter a URL to preview"
+              className="flex-1 border-0 bg-background rounded px-2 py-1 h-auto text-xs font-mono focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 placeholder:text-muted-foreground placeholder:font-sans"
+              title={showUrl || 'Enter a URL'}
             />
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6 flex-shrink-0 hover:bg-muted"
               onClick={handleRefresh}
-              disabled={!previewUrl}
+              disabled={!showUrl}
               title="Refresh preview"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -121,8 +126,8 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
               variant="ghost"
               size="icon"
               className="h-6 w-6 flex-shrink-0 hover:bg-muted"
-              onClick={() => window.open(previewUrl!, '_blank')}
-              disabled={!previewUrl}
+              onClick={() => window.open(showUrl!, '_blank')}
+              disabled={!showUrl}
               title="Open in new tab"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -151,17 +156,17 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
               </div>
             )}
 
-            {previewUrl && serverStatus === 'running' && (
+            {showUrl && serverStatus !== 'starting' && (
               <iframe
                 key={key}
-                src={previewUrl}
+                src={showUrl}
                 className="w-full h-full border-0"
                 sandbox="allow-scripts allow-same-origin"
                 title="Website Preview"
               />
             )}
 
-            {!previewUrl && serverStatus === 'idle' && generatedCode && (
+            {!showUrl && serverStatus === 'idle' && generatedCode && (
               <iframe
                 key={key}
                 ref={iframeRef}
@@ -171,13 +176,13 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
               />
             )}
 
-            {!previewUrl && serverStatus === 'idle' && !generatedCode && (
+            {!showUrl && serverStatus === 'idle' && !generatedCode && (
               <div className="flex items-center justify-center h-full bg-muted/20">
                 <div className="text-center space-y-2 text-muted-foreground">
                   <Code className="h-12 w-12 mx-auto opacity-50" />
                   <h3 className="text-lg font-semibold">No preview available</h3>
                   <p className="text-sm">
-                    Start a conversation to generate a website
+                    Start a conversation to generate a website or enter a URL
                   </p>
                 </div>
               </div>
@@ -217,5 +222,6 @@ export function RightPanel({ generatedCode = "" }: RightPanelProps) {
       </TabsContent>
     </Tabs>
   );
-}
+});
 
+RightPanel.displayName = "RightPanel";

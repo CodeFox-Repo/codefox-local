@@ -5,12 +5,13 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { ChatContainer } from "@/components/chat/chat-container";
-import { RightPanel } from "@/components/preview/right-panel";
+import { RightPanel, type RightPanelRef } from "@/components/preview/right-panel";
 import { MainLayout } from "@/components/layout/main-layout";
 import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
 import { createProject, requestProjectTitle } from "@/lib/client-tools";
 import { clientToolCall } from "@/lib/client-tool-handlers";
+import { setRightPanelRef } from "@/lib/preview-ref";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
   const lastProjectIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const shouldCancelRef = useRef(false);
+  const rightPanelRef = useRef<RightPanelRef>(null);
 
   const projectId = useProjectStore((state) => state.currentProjectId);
   const setProject = useProjectStore((state) => state.setCurrentProject);
@@ -55,6 +57,15 @@ export default function Home() {
       abortControllerRef.current = null;
     },
   });
+
+  useEffect(() => {
+    if (rightPanelRef.current) {
+      setRightPanelRef(rightPanelRef.current);
+    }
+    return () => {
+      setRightPanelRef(null);
+    };
+  }, []);
 
   useEffect(() => {
     const previousId = lastProjectIdRef.current;
@@ -209,7 +220,7 @@ export default function Home() {
             onPromptClick={handlePromptClick}
           />
         }
-        rightPanel={<RightPanel />}
+        rightPanel={<RightPanel ref={rightPanelRef} />}
       />
       <SettingsModal />
     </>
