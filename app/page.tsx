@@ -140,12 +140,14 @@ export default function Home() {
     });
     setChatMessages([]);
     setInput("");
-    toast.info("Ready to create a new project");
   };
 
   const handleStop = () => {
     stop();
-    toast.info("Stream stopped");
+  };
+
+  const handlePromptClick = (prompt: string) => {
+    setInput(prompt);
   };
 
   const isLoading = status === "streaming" || status === "submitted";
@@ -163,6 +165,7 @@ export default function Home() {
             onSubmit={handleSubmit}
             onNew={handleNewProject}
             onStop={handleStop}
+            onPromptClick={handlePromptClick}
           />
         }
         rightPanel={<IframeContainer />}

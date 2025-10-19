@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./chat-message";
+import { WelcomeScreen } from "./welcome-screen";
 import { ToolCall } from "@/components/tools/tool-call";
 import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from "ai";
 import type { UIMessage } from "ai";
@@ -10,9 +11,11 @@ import type { UIMessage } from "ai";
 interface MessageListProps {
   messages: UIMessage[];
   isLoading?: boolean;
+  onPromptClick?: (prompt: string) => void;
+  onShowHistory?: () => void;
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages, isLoading, onPromptClick, onShowHistory }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -22,12 +25,10 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 
   if (messages.length === 0 && !isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold">Start a conversation</h3>
-          <p className="text-sm">Describe the website you want to create and I&apos;ll help you build it.</p>
-        </div>
-      </div>
+      <WelcomeScreen 
+        onPromptClick={onPromptClick || (() => {})} 
+        onShowHistory={onShowHistory} 
+      />
     );
   }
 
