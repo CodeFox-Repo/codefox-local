@@ -94,6 +94,7 @@ export function ChatContainer({
               isLoading={isLoading}
               onPromptClick={onPromptClick}
               onShowHistory={handleShowHistory}
+              onSelectProject={handleHideHistory}
             />
           </div>
 

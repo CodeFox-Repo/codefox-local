@@ -13,9 +13,10 @@ interface MessageListProps {
   isLoading?: boolean;
   onPromptClick?: (prompt: string) => void;
   onShowHistory?: () => void;
+  onSelectProject?: () => void;
 }
 
-export function MessageList({ messages, isLoading, onPromptClick, onShowHistory }: MessageListProps) {
+export function MessageList({ messages, isLoading, onPromptClick, onShowHistory, onSelectProject }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +28,8 @@ export function MessageList({ messages, isLoading, onPromptClick, onShowHistory 
     return (
       <WelcomeScreen 
         onPromptClick={onPromptClick || (() => {})} 
-        onShowHistory={onShowHistory} 
+        onShowHistory={onShowHistory}
+        onSelectProject={onSelectProject}
       />
     );
   }

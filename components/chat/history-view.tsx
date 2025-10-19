@@ -22,7 +22,7 @@ export function HistoryView({ onBack, onSelectProject }: HistoryViewProps) {
   }, []);
 
   return (
-    <div className="flex items-start justify-center h-full p-6 overflow-auto">
+    <div className="flex items-start justify-center h-full px-6 pb-6 pt-4 overflow-auto">
       <div className="w-full max-w-3xl space-y-4">
         <div className="flex items-center gap-1">
           {onBack && (
