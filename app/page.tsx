@@ -16,7 +16,10 @@ import { toast } from "sonner";
 export default function Home() {
   const [input, setInput] = useState("");
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const lastProjectIdRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const shouldCancelRef = useRef(false);
 
   const projectId = useProjectStore((state) => state.currentProjectId);
   const setProject = useProjectStore((state) => state.setCurrentProject);
@@ -40,9 +43,16 @@ export default function Home() {
     onError: (error) => {
       console.error("Chat error:", error);
       toast.error("Failed to send message");
+      setIsPending(false);
+      setIsInitializing(false);
+      abortControllerRef.current = null;
     },
     async onToolCall({ toolCall }) {
       await clientToolCall({ toolCall, addToolResult });
+    },
+    onFinish: () => {
+      setIsPending(false);
+      abortControllerRef.current = null;
     },
   });
 
@@ -96,23 +106,40 @@ export default function Home() {
 
   const handleSubmit = async (value: string) => {
     const trimmed = value.trim();
-    if (!trimmed || status === "streaming" || isInitializing) {
+    if (!trimmed || isInitializing || isPending || status === "submitted") {
       return;
     }
 
+    shouldCancelRef.current = false;
+    
     if (!project || messages.length === 0) {
       setIsInitializing(true);
+      setIsPending(true);
+      
       try {
-        toast.info("Initializing project...");
+        if (shouldCancelRef.current) {
+          return;
+        }
+        
         const nextProject = await createProject(`website-${Date.now()}`);
+        
+        if (shouldCancelRef.current) {
+          return;
+        }
+        
         setProject(nextProject);
-        toast.success("Project initialized!");
 
         await new Promise((resolve) => setTimeout(resolve, 0));
+        
+        if (shouldCancelRef.current) {
+          return;
+        }
+        
+        abortControllerRef.current = new AbortController();
         sendUserMessage(trimmed);
 
         const title = await requestProjectTitle(nextProject.id, trimmed);
-        if (title) {
+        if (title && !shouldCancelRef.current) {
           setProjectTitle(nextProject.id, title);
         }
   
@@ -121,8 +148,12 @@ export default function Home() {
         toast.error("Failed to initialize project");
       } finally {
         setIsInitializing(false);
+        setIsPending(false);
+        abortControllerRef.current = null;
       }
     } else {
+      setIsPending(true);
+      abortControllerRef.current = new AbortController();
       sendUserMessage(trimmed);
     }
   };
@@ -143,14 +174,24 @@ export default function Home() {
   };
 
   const handleStop = () => {
+    shouldCancelRef.current = true;
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     stop();
+    
+    setIsPending(false);
+    setIsInitializing(false);
   };
 
   const handlePromptClick = (prompt: string) => {
     setInput(prompt);
   };
 
-  const isLoading = status === "streaming" || status === "submitted";
+  const isLoading = status === "streaming" || status === "submitted" || isPending || isInitializing;
 
   return (
     <>

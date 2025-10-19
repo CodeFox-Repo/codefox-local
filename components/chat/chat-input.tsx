@@ -20,7 +20,7 @@ export function ChatInput({
   onChange,
   onSubmit,
   isLoading,
-  status = "ready",
+  status: _status = "ready",
   onPause,
   placeholder = "Describe the website you want to create...",
 }: ChatInputProps) {
@@ -49,7 +49,7 @@ export function ChatInput({
   }, [value]);
 
   const isSubmitDisabled = !value.trim() || isLoading;
-  const isStreaming = status === "streaming";
+  const canStop = isLoading && onPause; // Show stop button whenever loading
 
   return (
     <form
@@ -71,7 +71,7 @@ export function ChatInput({
           />
 
           <div className="absolute bottom-3 right-3">
-            {isStreaming && onPause ? (
+            {canStop ? (
               <Button
                 type="button"
                 onClick={onPause}
