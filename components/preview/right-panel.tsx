@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, forwardRef } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { Code, Eye, Loader2 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import { SandpackEditor } from "@/components/preview/code-editor";
@@ -11,66 +11,59 @@ import {
 } from "@codesandbox/sandpack-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useSandpackFiles } from "@/hooks/use-sandpack-files";
+import { CODEFOX_SANDPACK_TEMPLATE } from "@/lib/sandpack-template";
 import "@/components/preview/code-editor/sandpack-custom.css";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface RightPanelProps {}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface RightPanelRef {}
-
-// Mock data for testing
-const MOCK_FILES = {
-  '/App.tsx': `export default function App() {
-  return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      <div style={{ textAlign: 'center', color: 'white', padding: '2rem' }}>
-        <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Welcome to CodeFox
-        </h1>
-        <p style={{ fontSize: '1.25rem', marginBottom: '2rem', opacity: 0.9 }}>
-          Start building amazing things with AI
-        </p>
-        <button style={{
-          padding: '0.75rem 1.5rem',
-          background: 'white',
-          color: '#667eea',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '1rem',
-          fontWeight: '600',
-          cursor: 'pointer',
-          transition: 'transform 0.2s'
-        }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          Get Started
-        </button>
-      </div>
-    </div>
-  );
-}`
-};
+export interface RightPanelRef {
+  writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>;
+  executeCommand: (command: string) => Promise<{ success: boolean; message?: string }>;
+}
 
 // Internal component that uses Sandpack context
-function RightPanelContent({ 
-  activeTab, 
-  setActiveTab,
-  currentProject 
-}: { 
+interface RightPanelContentProps {
   activeTab: 'preview' | 'code';
   setActiveTab: (tab: 'preview' | 'code') => void;
   currentProject: { id: string; title?: string; createdAt: Date } | null;
-}) {
+  fileApiRef: React.MutableRefObject<RightPanelRef | null>;
+}
+
+function RightPanelContent({ 
+  activeTab, 
+  setActiveTab,
+  currentProject,
+  fileApiRef
+}: RightPanelContentProps) {
   const { sandpack } = useSandpack();
+  const { writeFile, executeCommand } = useSandpackFiles();
   const isLoading = sandpack.status === 'idle' || sandpack.status === 'initial';
+
+  // Expose file operations API
+  useEffect(() => {
+    const api = {
+      writeFile: async (path: string, content: string) => {
+        const result = writeFile(path, content);
+        return result.success ? { success: true } : { success: false, error: result.error };
+      },
+      executeCommand: async (command: string) => {
+        const result = executeCommand(command);
+        return result;
+      },
+    };
+
+    fileApiRef.current = api;
+
+    // Register API to store for client-side tools
+    useProjectStore.getState().setSandpackAPI(api);
+
+    return () => {
+      // Cleanup on unmount
+      useProjectStore.getState().clearSandpackAPI();
+    };
+  }, [writeFile, executeCommand, fileApiRef]);
 
   return (
     <div className="flex flex-col h-full">
@@ -146,79 +139,52 @@ function RightPanelContent({
 }
 
 export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
-  (_props, _ref) => {
-    const [files, setFiles] = useState<Record<string, string>>(MOCK_FILES);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  (_props, ref) => {
+    const [initialized, setInitialized] = useState(false);
+    const [activeTab, setActiveTab] = useState<'preview' | 'code'>('code');
     const { resolvedTheme } = useTheme();
+    const fileApiRef = useRef<RightPanelRef | null>(null);
 
     const currentProject = useProjectStore((state) => state.getCurrentProject());
+    const messages = useProjectStore((state) => state.messages);
 
+    // Expose API to parent via ref
+    useImperativeHandle(ref, () => ({
+      writeFile: async (path: string, content: string) => {
+        if (!fileApiRef.current) {
+          return { success: false, error: 'Sandpack not initialized' };
+        }
+        return fileApiRef.current.writeFile(path, content);
+      },
+      executeCommand: async (command: string) => {
+        if (!fileApiRef.current) {
+          return { success: false, message: 'Sandpack not initialized' };
+        }
+        return fileApiRef.current.executeCommand(command);
+      },
+    }), []);
+
+  // Initialize project when user sends first message
   useEffect(() => {
-    async function loadProjectFiles() {
-      if (!currentProject) {
-        console.log('[RightPanel] No currentProject, using mock data');
-        setFiles(MOCK_FILES);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        const listResponse = await fetch(
-          `/api/project/files?projectId=${currentProject.id}`
-        );
-        
-        if (!listResponse.ok) {
-          throw new Error('Failed to load file list');
-        }
-
-        const { files: fileList } = await listResponse.json();
-        const fileContents: Record<string, string> = {};
-        
-        for (const filePath of fileList) {
-          try {
-            const response = await fetch(
-              `/api/project/file?projectId=${currentProject.id}&filePath=${encodeURIComponent(filePath)}`
-            );
-            
-            if (response.ok) {
-              const data = await response.json();
-              const sandpackPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-              fileContents[sandpackPath] = data.content || '';
-            }
-          } catch (err) {
-            console.warn(`Failed to load file ${filePath}:`, err);
-          }
-        }
-
-        if (Object.keys(fileContents).length === 0) {
-          console.log('[RightPanel] No files in project, using mock data');
-          setFiles(MOCK_FILES);
-        } else {
-          setFiles(fileContents);
-        }
-      } catch (err) {
-        console.error('Failed to load project files:', err);
-        setFiles(MOCK_FILES);
-      } finally {
-        setLoading(false);
-      }
+    if (messages.length > 0 && !initialized) {
+      console.log('[RightPanel] First message detected, initializing project');
+      setInitialized(true);
+      // Files are already set to CODEFOX_SANDPACK_TEMPLATE
+      // AI will add more files via writeFile tool
     }
-
-    loadProjectFiles();
-  }, [currentProject]);
+  }, [messages, initialized]);
 
   const sandpackTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
 
-  if (loading) {
+  // Show welcome message before first message
+  if (!initialized && messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center w-full h-full bg-muted/20">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <h3 className="text-lg font-semibold">Loading project files...</h3>
-        <p className="text-sm text-muted-foreground mt-2">
-          This may take a moment
+        <Code className="h-16 w-16 text-muted-foreground/50 mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Ready to Build</h3>
+        <p className="text-sm text-muted-foreground text-center max-w-md">
+          Start a conversation to create your project.<br />
+          AI will help you build files and preview them in real-time.
         </p>
       </div>
     );
@@ -226,7 +192,7 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
 
   return (
     <SandpackProvider
-      files={files}
+      files={CODEFOX_SANDPACK_TEMPLATE}
       template="react-ts"
       theme={sandpackTheme}
       options={{
@@ -240,6 +206,7 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         currentProject={currentProject}
+        fileApiRef={fileApiRef}
       />
     </SandpackProvider>
   );

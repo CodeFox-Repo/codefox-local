@@ -1,5 +1,4 @@
 import { useProjectStore } from './store';
-import { setPreviewUrl } from './client-tools';
 
 /**
  * Generic tool call structure (compatible with AI SDK types)
@@ -44,123 +43,83 @@ interface ClientToolHandlerParams {
 type ClientToolHandler = (params: ClientToolHandlerParams) => Promise<void>;
 
 /**
- * Handler for setPreviewUrl tool (deprecated)
+ * Handler for writeFile tool
  */
-const handleSetPreviewUrl: ClientToolHandler = async ({ toolCall, addToolResult }) => {
+const handleWriteFile: ClientToolHandler = async ({ toolCall, addToolResult }) => {
   try {
-    const input = toolCall.input as { url: string };
-    await setPreviewUrl(input.url);
+    const input = toolCall.input as { path: string; content: string };
+    const sandpackAPI = useProjectStore.getState().sandpackAPI;
 
-    addToolResult({
-      tool: 'setPreviewUrl',
-      toolCallId: toolCall.toolCallId,
-      output: { success: true, message: `Preview updated to ${input.url}` },
-    });
+    if (!sandpackAPI) {
+      addToolResult({
+        tool: 'writeFile',
+        toolCallId: toolCall.toolCallId,
+        state: 'output-error',
+        errorText: 'Sandpack not initialized',
+      });
+      return;
+    }
+
+    const result = await sandpackAPI.writeFile(input.path, input.content);
+
+    if (result.success) {
+      addToolResult({
+        tool: 'writeFile',
+        toolCallId: toolCall.toolCallId,
+        output: { success: true, message: `File written: ${input.path}` },
+      });
+    } else {
+      addToolResult({
+        tool: 'writeFile',
+        toolCallId: toolCall.toolCallId,
+        state: 'output-error',
+        errorText: result.error || 'Failed to write file',
+      });
+    }
   } catch (err) {
     addToolResult({
-      tool: 'setPreviewUrl',
+      tool: 'writeFile',
       toolCallId: toolCall.toolCallId,
       state: 'output-error',
-      errorText: err instanceof Error ? err.message : 'Failed to update preview',
+      errorText: err instanceof Error ? err.message : 'Failed to write file',
     });
   }
 };
 
 /**
- * Handler for tryStartDevServer tool
+ * Handler for executeCommand tool
  */
-const handleTryStartDevServer: ClientToolHandler = async ({ toolCall, addToolResult }) => {
-  // Get fresh project ID from store (not from component closure)
-  const currentProjId = useProjectStore.getState().currentProjectId;
-  const setDevServer = useProjectStore.getState().setDevServer;
-  const setDevServerStatus = useProjectStore.getState().setDevServerStatus;
-
+const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult }) => {
   try {
-    if (!currentProjId) {
-      console.error('[tryStartDevServer] No project selected');
+    const input = toolCall.input as { command: string };
+    const sandpackAPI = useProjectStore.getState().sandpackAPI;
+
+    if (!sandpackAPI) {
       addToolResult({
-        tool: 'tryStartDevServer',
+        tool: 'executeCommand',
         toolCallId: toolCall.toolCallId,
         state: 'output-error',
-        errorText: 'No project selected',
+        errorText: 'Sandpack not initialized',
       });
       return;
     }
 
-    setDevServerStatus('starting');
+    const result = await sandpackAPI.executeCommand(input.command);
 
-    // Check if already running first
-    const statusResponse = await fetch(`/api/dev-server?projectId=${currentProjId}`);
-    const statusData = await statusResponse.json();
-
-    if (statusData.status === 'running') {
-      addToolResult({
-        tool: 'tryStartDevServer',
-        toolCallId: toolCall.toolCallId,
-        output: {
-          success: true,
-          url: statusData.url,
-          pid: statusData.pid,
-          message: 'Dev server already running',
-        },
-      });
-      return;
-    }
-
-    // Start dev server via API
-    const response = await fetch('/api/dev-server', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ projectId: currentProjId }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[tryStartDevServer] Failed to start dev server:', errorText);
-      setDevServerStatus('error');
-      addToolResult({
-        tool: 'tryStartDevServer',
-        toolCallId: toolCall.toolCallId,
-        state: 'output-error',
-        errorText: `Failed to start dev server: ${errorText}`,
-      });
-      return;
-    }
-
-    const data = await response.json();
-
-    if (data.url && data.pid) {
-      setDevServer(currentProjId, data.url, data.pid);
-      addToolResult({
-        tool: 'tryStartDevServer',
-        toolCallId: toolCall.toolCallId,
-        output: {
-          success: true,
-          url: data.url,
-          pid: data.pid,
-          message: data.cached ? 'Dev server was already running' : 'Dev server started successfully',
-        },
-      });
-    } else {
-      console.error('[tryStartDevServer] No URL or PID in response');
-      setDevServerStatus('idle');
-      addToolResult({
-        tool: 'tryStartDevServer',
-        toolCallId: toolCall.toolCallId,
-        state: 'output-error',
-        errorText: 'Failed to get dev server URL',
-      });
-    }
-  } catch (err) {
-    console.error('[tryStartDevServer] Error:', err);
-    setDevServerStatus('error');
     addToolResult({
-      tool: 'tryStartDevServer',
+      tool: 'executeCommand',
+      toolCallId: toolCall.toolCallId,
+      output: { 
+        success: result.success, 
+        message: result.message || 'Command executed (no-op in Sandpack)' 
+      },
+    });
+  } catch (err) {
+    addToolResult({
+      tool: 'executeCommand',
       toolCallId: toolCall.toolCallId,
       state: 'output-error',
-      errorText: err instanceof Error ? err.message : 'Failed to start dev server',
+      errorText: err instanceof Error ? err.message : 'Failed to execute command',
     });
   }
 };
@@ -169,8 +128,8 @@ const handleTryStartDevServer: ClientToolHandler = async ({ toolCall, addToolRes
  * Map of client-side tool names to their handlers
  */
 const clientToolHandlers: Record<string, ClientToolHandler> = {
-  setPreviewUrl: handleSetPreviewUrl,
-  tryStartDevServer: handleTryStartDevServer,
+  writeFile: handleWriteFile,
+  executeCommand: handleExecuteCommand,
 };
 
 /**

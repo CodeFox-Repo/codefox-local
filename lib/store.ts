@@ -28,6 +28,12 @@ interface DevServerState {
   status: 'idle' | 'starting' | 'running' | 'error';
 }
 
+// Sandpack API reference
+interface SandpackAPI {
+  writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>;
+  executeCommand: (command: string) => Promise<{ success: boolean; message?: string }>;
+}
+
 interface ProjectGeneratorStore {
   // Current active project ID
   currentProjectId: string | null;
@@ -42,6 +48,9 @@ interface ProjectGeneratorStore {
 
   // Dev server state - automatically managed
   devServer: DevServerState;
+
+  // Sandpack API reference (not persisted)
+  sandpackAPI: SandpackAPI | null;
 
   // Actions - Project Management
   setCurrentProject: (project: ProjectInfo) => void;
@@ -65,6 +74,10 @@ interface ProjectGeneratorStore {
   setDevServer: (projectId: string, url: string, pid: number) => void;
   clearDevServer: () => void;
   setDevServerStatus: (status: DevServerState['status']) => void;
+
+  // Actions - Sandpack API
+  setSandpackAPI: (api: SandpackAPI) => void;
+  clearSandpackAPI: () => void;
 }
 
 export const useProjectStore = create<ProjectGeneratorStore>()(
@@ -82,6 +95,7 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
         pid: null,
         status: 'idle',
       },
+      sandpackAPI: null,
 
       // Project Management Actions
       setCurrentProject: (project: ProjectInfo) => {
@@ -288,6 +302,15 @@ export const useProjectStore = create<ProjectGeneratorStore>()(
             status,
           },
         }));
+      },
+
+      // Sandpack API Actions
+      setSandpackAPI: (api: SandpackAPI) => {
+        set({ sandpackAPI: api });
+      },
+
+      clearSandpackAPI: () => {
+        set({ sandpackAPI: null });
       },
     }),
     {
