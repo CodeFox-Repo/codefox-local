@@ -75,9 +75,9 @@ export function ChatInput({
               <Button
                 type="button"
                 onClick={onPause}
-                variant="ghost"
+                variant="default"
                 size="icon"
-                className="rounded-2xl h-8 w-8 text-destructive hover:bg-destructive/15 hover:text-destructive"
+                className="rounded-2xl h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                 aria-label="Stop generating response"
               >
                 <Square className="h-3.5 w-3.5" fill="currentColor" />
