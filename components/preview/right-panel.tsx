@@ -9,6 +9,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useProjectStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
+import { SandpackEditor } from "@/components/preview/code-editor";
 
 interface RightPanelProps {
   generatedCode?: string;
@@ -28,6 +29,7 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
     const devServer = useProjectStore((state) => state.devServer);
     const previewUrl = devServer.serverUrl;
     const serverStatus = devServer.status;
+    const currentProject = useProjectStore((state) => state.getCurrentProject());
 
     useImperativeHandle(ref, () => ({
       setUrl: (url: string) => {
@@ -188,8 +190,11 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
       </TabsContent>
 
       {/* Body: Code Tab */}
-      <TabsContent value="code" className="flex-1 m-0 overflow-hidden data-[state=active]:flex data-[state=active]:w-full bg-white">
-        {generatedCode ? (
+      <TabsContent value="code" className="flex-1 m-0 overflow-hidden data-[state=active]:flex data-[state=active]:flex-col data-[state=active]:w-full data-[state=active]:h-full bg-white">
+        {/* Always show Sandpack in testing mode, pass projectId if available */}
+        {currentProject || true ? (
+          <SandpackEditor projectId={currentProject?.id || ''} />
+        ) : generatedCode ? (
           <ScrollArea className="flex-1 w-full bg-white">
             <SyntaxHighlighter
               language="html"
