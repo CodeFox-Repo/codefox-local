@@ -1,14 +1,7 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-// import { spawn } from "child_process";
-// import { ProjectManager } from "@/lib/project-manager";
-import {
-  defineClientSideTool,
-  writeFileSchema,
-  executeCommandSchema,
-  attemptCompletionSchema,
-} from "@/lib/tool-definitions";
 import { createSystemPrompt } from "@/lib/prompts";
+import { clientSideTools } from "@/lib/client-tools-definitions";
 
 // const projectManager = ProjectManager.getInstance();
 
@@ -20,8 +13,9 @@ const openrouter = createOpenRouter({
 
 export async function POST(req: Request) {
   try {
-    const { messages, projectId, files, fileInstruction } = await req.json();
+    const { messages, projectId, files, fileContents, fileInstruction } = await req.json();
     console.log('files', files);
+    console.log('fileContents', fileContents ? Object.keys(fileContents) : 'none');
     console.log('fileInstruction', fileInstruction);
 
     // Validate API key
@@ -59,27 +53,10 @@ export async function POST(req: Request) {
     //   return null;
     // };
 
-    // Tools are now client-side only (handled by Sandpack)
-    // Server-side tools are disabled but definitions remain for compatibility
-    const tools = {
-      // Client-side tools only - all file operations happen in Sandpack
-      writeFile: defineClientSideTool({
-        description: "Write content to a file in the project. Creates directories if needed.",
-        inputSchema: writeFileSchema,
-      }),
-      executeCommand: defineClientSideTool({
-        description: "Execute a shell command in the project directory.",
-        inputSchema: executeCommandSchema,
-      }),
-      attemptCompletion: defineClientSideTool({
-        description: "Mark the task as complete and provide a summary of what was accomplished. Use this when you have finished implementing the user's request.",
-        inputSchema: attemptCompletionSchema,
-      }),
-    };
-
-    // Create system prompt with file structure and organization instructions
+    // Create system prompt with file contents and organization instructions
     const systemPrompt = createSystemPrompt({
       files,
+      fileContents,
       fileInstruction
     });
 
@@ -90,7 +67,7 @@ export async function POST(req: Request) {
       ),
       messages: modelMessages,
       system: systemPrompt,
-      tools,
+      tools: clientSideTools,
       temperature: 0.7,
       maxOutputTokens: 16384,
       stopWhen: stepCountIs(100),

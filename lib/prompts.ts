@@ -2,6 +2,7 @@
 export function createSystemPrompt(options?: {
   isFirstMessage?: boolean;
   files?: string[];
+  fileContents?: Record<string, string>;
   fileInstruction?: string;
 }): string {
   const sections = [
@@ -16,8 +17,12 @@ export function createSystemPrompt(options?: {
     sections.push(createFirstMessageSection());
   }
 
-  // Add file structure context if files are provided
-  if (options?.files && options.files.length > 0) {
+  // Add file contents context if provided (preferred over just file paths)
+  if (options?.fileContents && Object.keys(options.fileContents).length > 0) {
+    sections.push(createFileContentsSection(options.fileContents));
+  }
+  // Fallback to file structure if only paths are provided
+  else if (options?.files && options.files.length > 0) {
     sections.push(createFileStructureSection(options.files));
   }
 
@@ -113,14 +118,6 @@ You have access to the following tools to help you complete tasks:
   - Parameters: \`{ path: string, content: string }\`
   - Example: \`writeFile({ path: "src/App.tsx", content: "..." })\`
 
-### Command Execution
-- **executeCommand**: Execute shell commands in the project directory (client-side tool)
-  - Parameters: \`{ command: string }\`
-  - Note: Commands are executed in Sandpack environment (limited functionality)
-  - Examples:
-    - Explore project: \`executeCommand({ command: "ls -la" })\`
-    - Check structure: \`executeCommand({ command: "find . -type f -name '*.json'" })\`
-
 ### Task Completion
 - **attemptCompletion**: Mark the task as complete and provide a summary
   - Parameters: \`{ summary: string }\`
@@ -158,10 +155,6 @@ function createEfficiencySection(): string {
 - Read files when you need to understand existing code
 - List files to explore directory structure
 
-### EFFICIENT COMMAND EXECUTION
-- Use executeCommand for any shell operations: install packages, run builds, start servers
-- Use keepAlive: true for long-running processes like dev servers
-- Chain independent commands with && when they don't need to run in background
 
 ## Common Pitfalls to AVOID
 
@@ -178,7 +171,9 @@ function createOutputSection(): string {
 
 - ALWAYS generate beautiful and responsive designs
 - Maximize reusability of components
-- Create a consistent design system using CSS/Tailwind
+- **Prefer Tailwind CSS inline classes** over modifying styles.css
+- Use semantic Tailwind classes: bg-background, text-foreground, bg-primary, bg-accent, etc.
+- Only modify /styles.css if user explicitly requests custom CSS variables or theme changes
 - Pay attention to contrast, color, and typography
 - Beautiful designs are your top priority
 
@@ -221,6 +216,26 @@ function createFileStructureSection(files: string[]): string {
 ${fileList}
 
 You can see the current files in the project. Use this information to understand the existing codebase before making changes.`;
+}
+
+// File contents context (preferred over file structure)
+function createFileContentsSection(fileContents: Record<string, string>): string {
+  const filePaths = Object.keys(fileContents).sort();
+
+  const fileBlocks = filePaths.map(path => {
+    const content = fileContents[path];
+    return `### ${path}
+
+\`\`\`
+${content}
+\`\`\``;
+  }).join('\n\n');
+
+  return `## Current Project Files
+
+You have access to all current project files with their complete contents. Use this context to understand the existing codebase before making changes.
+
+${fileBlocks}`;
 }
 
 // File organization instructions

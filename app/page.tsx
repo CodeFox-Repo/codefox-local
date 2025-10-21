@@ -36,8 +36,8 @@ export default function Home() {
         body: async () => {
           const currentProject = useProjectStore.getState().getCurrentProject();
 
-          // Get files from Sandpack via rightPanelRef
-          let files: string[] = [];
+          // Get file contents from Sandpack via rightPanelRef
+          let fileContents: Record<string, string> = {};
           try {
             const panelRef = getRightPanelRef();
             if (panelRef) {
@@ -51,7 +51,7 @@ export default function Home() {
               if (panelRef.getFiles) {
                 const sandpackFiles = panelRef.getFiles();
                 if (sandpackFiles && typeof sandpackFiles === 'object') {
-                  files = Object.keys(sandpackFiles);
+                  fileContents = sandpackFiles;
                 }
               }
             }
@@ -59,36 +59,47 @@ export default function Home() {
             console.warn('[Transport] Failed to get files from Sandpack:', error);
           }
 
-          console.log('[Transport] Sending files:', files);
+          console.log('[Transport] Sending file contents:', Object.keys(fileContents));
 
           // Get file organization instruction from environment or project settings
           const fileInstruction = process.env.NEXT_PUBLIC_FILE_INSTRUCTION || `
-## File Organization Rules
+## File Organization & Workflow
 
-**Entry Point:**
-- /App.tsx - Main application component (root component, this is where you start)
-- /index.tsx - React entry point (already configured, rarely needs changes)
-- /styles.css - Base styles with Tailwind CSS variables (already configured, do not modify unless user explicitly requests)
+**CRITICAL - Start Here:**
+- /App.tsx - Main application component. THIS IS WHERE YOU START. Modify this first for the main UI.
+- /index.tsx - React entry point (already configured, do not modify)
+- /styles.css - Base Tailwind CSS variables (already configured with design system, do not modify unless user explicitly requests)
 
-**Project Structure:**
-- Reusable React components → src/components/ (e.g., src/components/button.tsx, src/components/user-card.tsx)
-- Utility functions → src/utils/ (e.g., src/utils/format-date.ts, src/utils/api-client.ts)
-- Type definitions → src/types/ (e.g., src/types/user.ts, src/types/api.ts)
-- Custom hooks → src/hooks/ (e.g., src/hooks/use-auth.ts)
-- API/data fetching → src/api/ (e.g., src/api/users.ts)
+**Project Structure (Create only when needed):**
+- src/components/ - Reusable React components (e.g., button.tsx, user-card.tsx)
+- src/utils/ - Utility functions (e.g., format-date.ts, api-client.ts)
+- src/types/ - TypeScript type definitions (e.g., user.ts, api.ts)
+- src/hooks/ - Custom React hooks (e.g., use-auth.ts)
+- src/api/ - API/data fetching logic (e.g., users.ts)
 
-**Naming Convention:**
-- Use kebab-case for all file names (e.g., user-profile.tsx, api-client.ts)
-- Component files should match component name (e.g., UserProfile in user-profile.tsx)
+**Design System (Follow Strictly):**
+- NEVER use explicit colors like text-white, bg-white, text-black in components
+- ALWAYS use Tailwind design tokens from styles.css (e.g., bg-background, text-foreground, bg-primary)
+- The design system is already configured with beautiful colors, gradients, and CSS variables
+- Use semantic color classes: bg-primary, bg-secondary, bg-accent, bg-muted, etc.
+- For dark mode, use dark: prefix (e.g., dark:bg-background) - it's already configured
 
-**When to create new files:**
-- Start by modifying /App.tsx for the main UI
-- Create new files in src/* only when you need reusable components or utilities
+**Coding Standards:**
+- File names: kebab-case (user-profile.tsx, api-client.ts)
+- Component names: PascalCase matching file name (UserProfile in user-profile.tsx)
+- Create small, focused components instead of large monolithic files
+- MAXIMIZE EFFICIENCY: Focus on what user explicitly requested, avoid scope creep
+
+**Workflow:**
+1. Start by editing /App.tsx for main UI
+2. Create src/* files only when you need reusable components or utilities
+3. Keep it simple and elegant - don't overengineer
+4. Use the design system tokens consistently
           `.trim();
 
           return {
             projectId: currentProject?.id,
-            files: files,
+            fileContents: fileContents,
             fileInstruction: fileInstruction,
           };
         },

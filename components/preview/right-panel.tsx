@@ -20,7 +20,6 @@ interface RightPanelProps {}
 
 export interface RightPanelRef {
   writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>;
-  executeCommand: (command: string) => Promise<{ success: boolean; message?: string }>;
   getFiles: () => Record<string, string>;
   waitForReady: () => Promise<void>;
   isReady: () => boolean;
@@ -41,7 +40,7 @@ function RightPanelContent({
   fileApiRef
 }: RightPanelContentProps) {
   const { sandpack } = useSandpack();
-  const { writeFile, executeCommand } = useSandpackFiles();
+  const { writeFile } = useSandpackFiles();
   const isLoading = sandpack.status === 'idle' || sandpack.status === 'initial';
   const readyResolversRef = useRef<Array<() => void>>([]);
 
@@ -51,10 +50,6 @@ function RightPanelContent({
       writeFile: async (path: string, content: string) => {
         const result = writeFile(path, content);
         return result.success ? { success: true } : { success: false, error: result.error };
-      },
-      executeCommand: async (command: string) => {
-        const result = executeCommand(command);
-        return result;
       },
       getFiles: () => {
         // Get current files from Sandpack and convert to string format
@@ -96,7 +91,7 @@ function RightPanelContent({
     };
 
     fileApiRef.current = api;
-  }, [writeFile, executeCommand, fileApiRef, sandpack]);
+  }, [writeFile, fileApiRef, sandpack]);
 
   // Resolve all pending waitForReady promises when Sandpack becomes ready
   useEffect(() => {
@@ -200,12 +195,6 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
           return { success: false, error: 'Sandpack not initialized' };
         }
         return fileApiRef.current.writeFile(path, content);
-      },
-      executeCommand: async (command: string) => {
-        if (!fileApiRef.current) {
-          return { success: false, message: 'Sandpack not initialized' };
-        }
-        return fileApiRef.current.executeCommand(command);
       },
       getFiles: () => {
         if (!fileApiRef.current) {

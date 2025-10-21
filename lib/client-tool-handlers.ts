@@ -87,43 +87,6 @@ const handleWriteFile: ClientToolHandler = async ({ toolCall, addToolResult, san
 };
 
 /**
- * Handler for executeCommand tool
- */
-const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult, sandpackAPI }) => {
-  try {
-    const input = toolCall.input as { command: string };
-
-    if (!sandpackAPI) {
-      addToolResult({
-        tool: 'executeCommand',
-        toolCallId: toolCall.toolCallId,
-        state: 'output-error',
-        errorText: 'Sandpack not initialized',
-      });
-      return;
-    }
-
-    const result = await sandpackAPI.executeCommand(input.command);
-
-    addToolResult({
-      tool: 'executeCommand',
-      toolCallId: toolCall.toolCallId,
-      output: {
-        success: result.success,
-        message: result.message || 'Command executed (no-op in Sandpack)'
-      },
-    });
-  } catch (err) {
-    addToolResult({
-      tool: 'executeCommand',
-      toolCallId: toolCall.toolCallId,
-      state: 'output-error',
-      errorText: err instanceof Error ? err.message : 'Failed to execute command',
-    });
-  }
-};
-
-/**
  * Handler for attemptCompletion tool
  */
 const handleAttemptCompletion: ClientToolHandler = async ({ toolCall, addToolResult }) => {
@@ -141,7 +104,6 @@ const handleAttemptCompletion: ClientToolHandler = async ({ toolCall, addToolRes
  */
 const clientToolHandlers: Record<string, ClientToolHandler> = {
   writeFile: handleWriteFile,
-  executeCommand: handleExecuteCommand,
   attemptCompletion: handleAttemptCompletion,
 };
 
