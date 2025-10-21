@@ -1,19 +1,16 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { spawn } from "child_process";
-import { ProjectManager } from "@/lib/project-manager";
+// import { spawn } from "child_process";
+// import { ProjectManager } from "@/lib/project-manager";
 import {
-  defineServerSideTool,
   defineClientSideTool,
   writeFileSchema,
   executeCommandSchema,
-  tryStartDevServerSchema,
-  type WriteFileOutput,
-  type ExecuteCommandOutput,
+  attemptCompletionSchema,
 } from "@/lib/tool-definitions";
 import { createSystemPrompt } from "@/lib/prompts";
 
-const projectManager = ProjectManager.getInstance();
+// const projectManager = ProjectManager.getInstance();
 
 // Create OpenRouter client
 const openrouter = createOpenRouter({
@@ -23,7 +20,9 @@ const openrouter = createOpenRouter({
 
 export async function POST(req: Request) {
   try {
-    const { messages, projectId } = await req.json();
+    const { messages, projectId, files, fileInstruction } = await req.json();
+    console.log('files', files);
+    console.log('fileInstruction', fileInstruction);
 
     // Validate API key
     if (!process.env.OPENROUTER_API_KEY) {
@@ -44,148 +43,45 @@ export async function POST(req: Request) {
     // Convert UIMessages to ModelMessages
     const modelMessages = convertToModelMessages(messages);
 
-    // Helper function to extract URL from dev server output
-    const extractUrl = (output: string): string | null => {
-      const patterns = [
-        /Local:\s+(https?:\/\/[^\s]+)/,           // Vite
-        /url:\s+(https?:\/\/[^\s]+)/,             // Next.js
-        /(https?:\/\/localhost:\d+)/,             // Generic
-      ];
+    // Helper function to extract URL from dev server output (unused for now)
+    // const extractUrl = (output: string): string | null => {
+    //   const patterns = [
+    //     /Local:\s+(https?:\/\/[^\s]+)/,           // Vite
+    //     /url:\s+(https?:\/\/[^\s]+)/,             // Next.js
+    //     /(https?:\/\/localhost:\d+)/,             // Generic
+    //   ];
 
-      for (const pattern of patterns) {
-        const match = output.match(pattern);
-        if (match) return match[1].replace(/\/$/, ''); // Remove trailing slash
-      }
+    //   for (const pattern of patterns) {
+    //     const match = output.match(pattern);
+    //     if (match) return match[1].replace(/\/$/, ''); // Remove trailing slash
+    //   }
 
-      return null;
-    };
+    //   return null;
+    // };
 
-    // TODO: When moving to remote/cloud deployment, these tools should be proxied
-    // to a VM sandbox environment for security and isolation. The right panel
-    // should connect to the sandbox's dev server instead of localhost.
-    //
-    // Architecture for remote deployment:
-    // 1. User request → Chat API
-    // 2. Chat API → VM Sandbox Proxy
-    // 3. VM Sandbox executes tools (writeFile, executeCommand)
-    // 4. Right panel iframe → VM Sandbox dev server (e.g., https://sandbox-{id}.example.com)
-    //
-    // For now, these tools execute on the local server where the app is running.
+    // Tools are now client-side only (handled by Sandpack)
+    // Server-side tools are disabled but definitions remain for compatibility
     const tools = {
-      writeFile: defineServerSideTool({
+      // Client-side tools only - all file operations happen in Sandpack
+      writeFile: defineClientSideTool({
         description: "Write content to a file in the project. Creates directories if needed.",
         inputSchema: writeFileSchema,
-        execute: async (input): Promise<WriteFileOutput> => {
-          try {
-            await projectManager.writeFile(projectId, input.path, input.content);
-            return {
-              success: true,
-              message: `File ${input.path} written successfully`,
-            };
-          } catch (error) {
-            return {
-              success: false,
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        },
       }),
-      executeCommand: defineServerSideTool({
-        description: "Execute a shell command in the project directory. For dev servers (npm run dev), use keepAlive=true to run in background.",
+      executeCommand: defineClientSideTool({
+        description: "Execute a shell command in the project directory.",
         inputSchema: executeCommandSchema,
-        execute: async (input): Promise<ExecuteCommandOutput> => {
-          const { command, keepAlive = false } = input;
-          try {
-            if (keepAlive) {
-              // Start dev server in background
-              const projectPath = projectManager.getProjectPath(projectId);
-
-              return new Promise((resolve, reject) => {
-                const proc = spawn(command, {
-                  cwd: projectPath,
-                  shell: true,
-                  detached: true,
-                  stdio: ['ignore', 'pipe', 'pipe'],
-                });
-
-                let output = '';
-
-                // Collect output
-                proc.stdout?.on('data', (data: Buffer) => {
-                  output += data.toString();
-
-                  // Try to extract URL
-                  const url = extractUrl(output);
-                  if (url) {
-                    proc.unref(); // Detach so it keeps running
-                    resolve({
-                      success: true,
-                      stdout: output,
-                      previewUrl: url,
-                      pid: proc.pid,
-                      message: `Dev server started at ${url}`,
-                    });
-                  }
-                });
-
-                proc.stderr?.on('data', (data: Buffer) => {
-                  output += data.toString();
-
-                  const url = extractUrl(output);
-                  if (url) {
-                    proc.unref();
-                    resolve({
-                      success: true,
-                      stdout: output,
-                      previewUrl: url,
-                      pid: proc.pid,
-                      message: `Dev server started at ${url}`,
-                    });
-                  }
-                });
-
-                proc.on('error', (error) => {
-                  reject({
-                    success: false,
-                    error: `Failed to start: ${error.message}`,
-                  });
-                });
-
-                // Timeout - commented out to allow any type of background job
-                // setTimeout(() => {
-                //   if (!extractUrl(output)) {
-                //     proc.kill();
-                //     reject({
-                //       success: false,
-                //       error: 'Server started but no URL found',
-                //       stdout: output.substring(0, 500),
-                //     });
-                //   }
-                // }, timeout);
-              });
-            } else {
-              // Normal execution
-              const result = await projectManager.executeCommand(projectId, command);
-              return {
-                success: true,
-                stdout: result.stdout,
-                stderr: result.stderr,
-              };
-            }
-          } catch (error) {
-            return {
-              success: false,
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        },
       }),
-      // Client-side tool: tryStartDevServer
-      tryStartDevServer: defineClientSideTool({
-        description: "Try to start the development server for the current project. This will run 'bun install && bun dev' and automatically detect the server URL. Call this tool when you have completed your work and want to preview the result.",
-        inputSchema: tryStartDevServerSchema,
+      attemptCompletion: defineClientSideTool({
+        description: "Mark the task as complete and provide a summary of what was accomplished. Use this when you have finished implementing the user's request.",
+        inputSchema: attemptCompletionSchema,
       }),
     };
+
+    // Create system prompt with file structure and organization instructions
+    const systemPrompt = createSystemPrompt({
+      files,
+      fileInstruction
+    });
 
     // Stream the response with tools
     const result = streamText({
@@ -193,9 +89,14 @@ export async function POST(req: Request) {
         process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-sonnet-4.5"
       ),
       messages: modelMessages,
-      system: createSystemPrompt(),
+      system: systemPrompt,
       tools,
       temperature: 0.7,
+      maxOutputTokens: 16384,
+      stopWhen: stepCountIs(100),
+      onStepFinish: (step) => {
+        console.log('[StreamText] Step finished:', step);
+      },
     });
 
     // Return UIMessage stream response (AI SDK v5)

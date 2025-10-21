@@ -22,7 +22,7 @@ export function ChatMessage({ role, content, isLoading = false }: ChatMessagePro
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 min-w-0 mt-0.5 leading-tight">
+        <div className="flex-1 min-w-0 mt-1 leading-tight">
           <Response className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 break-words leading-tight [&>p]:mt-0 [&>p]:leading-tight [&>*+*]:mt-3">
             {content}
           </Response>

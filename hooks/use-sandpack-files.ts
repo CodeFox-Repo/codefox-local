@@ -10,8 +10,13 @@ export function useSandpackFiles() {
       // Ensure path starts with /
       const normalizedPath = path.startsWith('/') ? path : `/${path}`;
       
+      // Log the file write operation
+      console.log(`[CodeFox] Writing to ${normalizedPath} (${content.split('\n').length} lines)`);
+      
       // Update file in Sandpack
       sandpack.updateFile(normalizedPath, content);
+      
+      console.log(`[CodeFox] ✅ Successfully wrote to ${normalizedPath}`);
       
       return { success: true, path: normalizedPath };
     } catch (error) {

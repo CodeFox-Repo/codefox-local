@@ -14,7 +14,7 @@ export function SandpackEditor({ projectId: _projectId }: SandpackEditorProps) {
       <SandpackLayout style={{ height: '100%', width: '100%', borderRadius: 0 }}>
         <SandpackFileExplorer 
           className="sandpack-custom-explorer"
-          style={{ minWidth: 200, maxWidth: 300 }} 
+          style={{ minWidth: 150, maxWidth: 150 }} 
         />
         <SandpackCodeEditor 
           className="sandpack-custom-editor"

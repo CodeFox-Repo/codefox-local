@@ -22,6 +22,10 @@ export const tryStartDevServerSchema = z.object({
   reason: z.string().optional().describe("Reason for starting the dev server (optional)"),
 });
 
+export const attemptCompletionSchema = z.object({
+  summary: z.string().describe("Brief summary of what was accomplished"),
+});
+
 // ============================================================================
 // Output Schemas
 // ============================================================================
@@ -55,6 +59,10 @@ export const tryStartDevServerOutputSchema = z.object({
   error: z.string().optional(),
 });
 
+export const attemptCompletionOutputSchema = z.object({
+  summary: z.string(),
+});
+
 // ============================================================================
 // Type Exports
 // ============================================================================
@@ -70,6 +78,9 @@ export type SetPreviewUrlOutput = z.infer<typeof setPreviewUrlOutputSchema>;
 
 export type TryStartDevServerInput = z.infer<typeof tryStartDevServerSchema>;
 export type TryStartDevServerOutput = z.infer<typeof tryStartDevServerOutputSchema>;
+
+export type AttemptCompletionInput = z.infer<typeof attemptCompletionSchema>;
+export type AttemptCompletionOutput = z.infer<typeof attemptCompletionOutputSchema>;
 
 // ============================================================================
 // Tool Definition Helpers

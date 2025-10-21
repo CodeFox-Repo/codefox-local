@@ -21,6 +21,9 @@ interface RightPanelProps {}
 export interface RightPanelRef {
   writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>;
   executeCommand: (command: string) => Promise<{ success: boolean; message?: string }>;
+  getFiles: () => Record<string, string>;
+  waitForReady: () => Promise<void>;
+  isReady: () => boolean;
 }
 
 // Internal component that uses Sandpack context
@@ -31,8 +34,8 @@ interface RightPanelContentProps {
   fileApiRef: React.MutableRefObject<RightPanelRef | null>;
 }
 
-function RightPanelContent({ 
-  activeTab, 
+function RightPanelContent({
+  activeTab,
   setActiveTab,
   currentProject,
   fileApiRef
@@ -40,10 +43,11 @@ function RightPanelContent({
   const { sandpack } = useSandpack();
   const { writeFile, executeCommand } = useSandpackFiles();
   const isLoading = sandpack.status === 'idle' || sandpack.status === 'initial';
+  const readyResolversRef = useRef<Array<() => void>>([]);
 
   // Expose file operations API
   useEffect(() => {
-    const api = {
+    const api: RightPanelRef = {
       writeFile: async (path: string, content: string) => {
         const result = writeFile(path, content);
         return result.success ? { success: true } : { success: false, error: result.error };
@@ -52,18 +56,56 @@ function RightPanelContent({
         const result = executeCommand(command);
         return result;
       },
+      getFiles: () => {
+        // Get current files from Sandpack and convert to string format
+        console.log('[RightPanelContent] Sandpack status:', sandpack.status);
+        console.log('[RightPanelContent] Sandpack files:', sandpack.files);
+
+        // Only return files if Sandpack is ready
+        if (sandpack.status === 'idle' || sandpack.status === 'initial') {
+          console.log('[RightPanelContent] Sandpack not ready yet, returning empty files');
+          return {};
+        }
+
+        const files = sandpack.files || {};
+        const result: Record<string, string> = {};
+
+        for (const [path, file] of Object.entries(files)) {
+          if (typeof file === 'object' && file !== null && 'code' in file) {
+            result[path] = (file as { code: string }).code;
+          } else if (typeof file === 'string') {
+            result[path] = file;
+          }
+        }
+
+        console.log('[RightPanelContent] Converted files:', result);
+        return result;
+      },
+      waitForReady: () => {
+        return new Promise<void>((resolve) => {
+          if (sandpack.status === 'running') {
+            resolve();
+          } else {
+            readyResolversRef.current.push(resolve);
+          }
+        });
+      },
+      isReady: () => {
+        return sandpack.status === 'running';
+      },
     };
 
     fileApiRef.current = api;
+  }, [writeFile, executeCommand, fileApiRef, sandpack]);
 
-    // Register API to store for client-side tools
-    useProjectStore.getState().setSandpackAPI(api);
-
-    return () => {
-      // Cleanup on unmount
-      useProjectStore.getState().clearSandpackAPI();
-    };
-  }, [writeFile, executeCommand, fileApiRef]);
+  // Resolve all pending waitForReady promises when Sandpack becomes ready
+  useEffect(() => {
+    if (sandpack.status === 'running') {
+      console.log('[RightPanelContent] Sandpack is ready, resolving pending promises');
+      readyResolversRef.current.forEach(resolve => resolve());
+      readyResolversRef.current = [];
+    }
+  }, [sandpack.status]);
 
   return (
     <div className="flex flex-col h-full">
@@ -120,7 +162,7 @@ function RightPanelContent({
           <SandpackPreview
             className="sandpack-custom-preview"
             style={{ borderRadius: 0, height: '100%', width: '100%' }}
-            showOpenInCodeSandbox={false}
+            showOpenInCodeSandbox={true}
           />
         </div>
 
@@ -140,13 +182,16 @@ function RightPanelContent({
 
 export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
   (_props, ref) => {
-    const [initialized, setInitialized] = useState(false);
     const [activeTab, setActiveTab] = useState<'preview' | 'code'>('code');
+    const [mounted, setMounted] = useState(false);
     const { resolvedTheme } = useTheme();
     const fileApiRef = useRef<RightPanelRef | null>(null);
 
     const currentProject = useProjectStore((state) => state.getCurrentProject());
-    const messages = useProjectStore((state) => state.messages);
+
+    useEffect(() => {
+      setMounted(true);
+    }, []);
 
     // Expose API to parent via ref
     useImperativeHandle(ref, () => ({
@@ -162,47 +207,63 @@ export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
         }
         return fileApiRef.current.executeCommand(command);
       },
+      getFiles: () => {
+        if (!fileApiRef.current) {
+          console.warn('[RightPanel] getFiles called but fileApiRef is null');
+          return {};
+        }
+        const files = fileApiRef.current.getFiles();
+        console.log('[RightPanel] getFiles result:', files);
+        return files;
+      },
+      waitForReady: async () => {
+        // Wait for fileApiRef to be initialized
+        if (!fileApiRef.current) {
+          console.log('[RightPanel] Waiting for fileApiRef to be initialized...');
+          await new Promise<void>((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (fileApiRef.current) {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 10);
+          });
+        }
+        if (!fileApiRef.current) {
+          throw new Error('Failed to initialize fileApiRef');
+        }
+        return fileApiRef.current.waitForReady();
+      },
+      isReady: () => {
+        if (!fileApiRef.current) {
+          return false;
+        }
+        return fileApiRef.current.isReady();
+      },
     }), []);
 
-  // Initialize project when user sends first message
-  useEffect(() => {
-    if (messages.length > 0 && !initialized) {
-      console.log('[RightPanel] First message detected, initializing project');
-      setInitialized(true);
-      // Files are already set to CODEFOX_SANDPACK_TEMPLATE
-      // AI will add more files via writeFile tool
-    }
-  }, [messages, initialized]);
-
-  const sandpackTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
-
-  // Show welcome message before first message
-  if (!initialized && messages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center w-full h-full bg-muted/20">
-        <Code className="h-16 w-16 text-muted-foreground/50 mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Ready to Build</h3>
-        <p className="text-sm text-muted-foreground text-center max-w-md">
-          Start a conversation to create your project.<br />
-          AI will help you build files and preview them in real-time.
-        </p>
-      </div>
-    );
-  }
+  // Use 'dark' as default until mounted to avoid hydration mismatch
+  const sandpackTheme = mounted && resolvedTheme === 'light' ? 'light' : 'dark';
 
   return (
     <SandpackProvider
-      files={CODEFOX_SANDPACK_TEMPLATE}
       template="react-ts"
+      files={CODEFOX_SANDPACK_TEMPLATE}
       theme={sandpackTheme}
       options={{
         autorun: true,
         autoReload: true,
         recompileMode: "delayed",
-        recompileDelay: 500
+        recompileDelay: 500,
+        externalResources: ["https://cdn.tailwindcss.com"],
+        classes: {
+          "sp-wrapper": "custom-wrapper",
+          "sp-layout": "custom-layout",
+          "sp-tab-button": "custom-tab",
+        },
       }}
     >
-      <RightPanelContent 
+      <RightPanelContent
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         currentProject={currentProject}

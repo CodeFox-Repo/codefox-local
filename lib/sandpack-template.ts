@@ -1,72 +1,126 @@
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 
-// Base template based on your /template directory
+// Base template - Simple React setup without Vite
 export const CODEFOX_SANDPACK_TEMPLATE: SandpackFiles = {
-  // Entry point
-  "/index.html": `<!doctype html>
+  // Entry HTML (Tailwind loaded via SandpackProvider externalResources)
+  "/public/index.html": `<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/codefox.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeFox App</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>`,
+  // Main App component
+  "/App.tsx": `// Main App Component
+// This is the root component of your application
+export default function App(): JSX.Element {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-amber-100">
+      <div className="text-center space-y-6 p-8">
+        <div className="space-y-2">
+          <h1 className="text-5xl font-bold text-gray-900 tracking-tight">
+            Hello World
+          </h1>
+          <p className="text-xl text-gray-600">
+            Start building with CodeFox
+          </p>
+        </div>
 
-  // Main entry
-  "/src/index.tsx": `import ReactDOM from 'react-dom/client';
-import './index.css';
+        <div className="flex gap-4 justify-center">
+          <button className="px-6 py-3 bg-orange-600 text-white font-medium rounded-lg shadow-lg hover:bg-orange-700 transition-colors duration-200">
+            Get Started
+          </button>
+          <button className="px-6 py-3 bg-white text-orange-600 font-medium rounded-lg shadow-lg border-2 border-orange-600 hover:bg-orange-50 transition-colors duration-200">
+            Learn More
+          </button>
+        </div>
 
-const App = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-    <div className="text-center space-y-6">
-      <h1 className="text-6xl font-bold text-gray-900">
-        Welcome to CodeFox
-      </h1>
-      <p className="text-xl text-gray-600">
-        Start building amazing things with AI
-      </p>
-      <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-        Get Started
-      </button>
+        <div className="mt-8 p-6 bg-white rounded-xl shadow-md">
+          <p className="text-sm text-gray-500 mb-2">Powered by Tailwind CSS</p>
+          <div className="flex gap-2 justify-center">
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">React</span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">TypeScript</span>
+            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Tailwind</span>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  )
+}
+`,
+  // React entry point
+  "/index.tsx": `import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+import App from "./App";
+
+const root = createRoot(document.getElementById("root")!);
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
 `,
 
-  // Styles
-  "/src/index.css": `@import "tailwindcss";
-
-@theme {
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
-  --color-primary: #2563eb;
+  // Base styles - custom CSS variables only
+  "/styles.css": `:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 3.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 3.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 3.9%);
+  --primary: hsl(0 0% 9%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(0 0% 96.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 96.1%);
+  --muted-foreground: hsl(0 0% 45.1%);
+  --accent: hsl(0 0% 96.1%);
+  --accent-foreground: hsl(0 0% 9%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 89.8%);
+  --input: hsl(0 0% 89.8%);
+  --ring: hsl(0 0% 3.9%);
+  --radius: 0.5rem;
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.dark {
+  --background: hsl(0 0% 3.9%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 3.9%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 3.9%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 14.9%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 14.9%);
+  --muted-foreground: hsl(0 0% 63.9%);
+  --accent: hsl(0 0% 14.9%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 14.9%);
+  --input: hsl(0 0% 14.9%);
+  --ring: hsl(0 0% 83.1%);
 }
 
 * {
-  box-sizing: border-box;
+  border-color: hsl(var(--border));
 }
-`,
 
-  // Utilities
-  "/src/lib/utils.ts": `import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: sans-serif;
 }
 `,
 
@@ -85,80 +139,36 @@ export function cn(...inputs: ClassValue[]) {
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["./**/*"]
 }
 `,
 
-  // Package.json - simplified for Sandpack
+  // Package.json with Tailwind CSS and common packages
   "/package.json": `{
   "name": "codefox-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.6.0",
-    "lucide-react": "^0.445.0"
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.5.0",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.263.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.1"
+    "typescript": "^5.6.2",
+    "tailwindcss": "^4.0.0",
+    "tailwindcss-animate": "^1.0.7"
   }
 }
 `,
 };
-
-// Sandpack setup configuration
-export const CODEFOX_SANDPACK_SETUP = {
-  dependencies: {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.6.0",
-    "lucide-react": "^0.445.0",
-    // Add more dependencies as needed by AI
-  },
-  devDependencies: {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.6.2",
-  },
-  entry: "/src/index.tsx",
-  environment: "vite" as const,
-};
-
-// Helper to get minimal starter template
-export function getMinimalTemplate(): SandpackFiles {
-  return {
-    "/App.tsx": CODEFOX_SANDPACK_TEMPLATE["/src/index.tsx"],
-    "/styles.css": CODEFOX_SANDPACK_TEMPLATE["/src/index.css"],
-  };
-}
-
-// Helper to merge user files with template
-export function mergeWithTemplate(userFiles: SandpackFiles): SandpackFiles {
-  return {
-    ...CODEFOX_SANDPACK_TEMPLATE,
-    ...userFiles,
-  };
-}
 

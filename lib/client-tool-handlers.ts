@@ -1,4 +1,4 @@
-import { useProjectStore } from './store';
+import type { RightPanelRef } from '@/components/preview/right-panel';
 
 /**
  * Generic tool call structure (compatible with AI SDK types)
@@ -35,6 +35,7 @@ type ToolResult =
 interface ClientToolHandlerParams {
   toolCall: ToolCall;
   addToolResult: (result: ToolResult) => void;
+  sandpackAPI: RightPanelRef | null;
 }
 
 /**
@@ -45,10 +46,9 @@ type ClientToolHandler = (params: ClientToolHandlerParams) => Promise<void>;
 /**
  * Handler for writeFile tool
  */
-const handleWriteFile: ClientToolHandler = async ({ toolCall, addToolResult }) => {
+const handleWriteFile: ClientToolHandler = async ({ toolCall, addToolResult, sandpackAPI }) => {
   try {
     const input = toolCall.input as { path: string; content: string };
-    const sandpackAPI = useProjectStore.getState().sandpackAPI;
 
     if (!sandpackAPI) {
       addToolResult({
@@ -89,10 +89,9 @@ const handleWriteFile: ClientToolHandler = async ({ toolCall, addToolResult }) =
 /**
  * Handler for executeCommand tool
  */
-const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult }) => {
+const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult, sandpackAPI }) => {
   try {
     const input = toolCall.input as { command: string };
-    const sandpackAPI = useProjectStore.getState().sandpackAPI;
 
     if (!sandpackAPI) {
       addToolResult({
@@ -109,9 +108,9 @@ const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult
     addToolResult({
       tool: 'executeCommand',
       toolCallId: toolCall.toolCallId,
-      output: { 
-        success: result.success, 
-        message: result.message || 'Command executed (no-op in Sandpack)' 
+      output: {
+        success: result.success,
+        message: result.message || 'Command executed (no-op in Sandpack)'
       },
     });
   } catch (err) {
@@ -125,11 +124,25 @@ const handleExecuteCommand: ClientToolHandler = async ({ toolCall, addToolResult
 };
 
 /**
+ * Handler for attemptCompletion tool
+ */
+const handleAttemptCompletion: ClientToolHandler = async ({ toolCall, addToolResult }) => {
+  const input = toolCall.input as { summary: string };
+
+  addToolResult({
+    tool: 'attemptCompletion',
+    toolCallId: toolCall.toolCallId,
+    output: { summary: input.summary },
+  });
+};
+
+/**
  * Map of client-side tool names to their handlers
  */
 const clientToolHandlers: Record<string, ClientToolHandler> = {
   writeFile: handleWriteFile,
   executeCommand: handleExecuteCommand,
+  attemptCompletion: handleAttemptCompletion,
 };
 
 /**
@@ -141,8 +154,9 @@ const clientToolHandlers: Record<string, ClientToolHandler> = {
 export async function clientToolCall<T extends ToolCall>(params: {
   toolCall: T;
   addToolResult: (result: ToolResult) => void;
+  sandpackAPI: RightPanelRef | null;
 }): Promise<boolean> {
-  const { toolCall } = params;
+  const { toolCall, sandpackAPI } = params;
 
   // Check if it's a dynamic tool (server-side)
   if (toolCall.dynamic) {
@@ -157,6 +171,6 @@ export async function clientToolCall<T extends ToolCall>(params: {
   }
 
   // Execute the handler
-  await handler(params);
+  await handler({ ...params, sandpackAPI });
   return true;
 }

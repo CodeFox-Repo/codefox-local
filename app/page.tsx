@@ -11,7 +11,7 @@ import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
 import { createProject, requestProjectTitle } from "@/lib/client-tools";
 import { clientToolCall } from "@/lib/client-tool-handlers";
-import { setRightPanelRef } from "@/lib/preview-ref";
+import { setRightPanelRef, getRightPanelRef } from "@/lib/preview-ref";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -33,9 +33,65 @@ export default function Home() {
     () =>
       new DefaultChatTransport<UIMessage>({
         api: "/api/chat",
-        body: () => ({
-          projectId: useProjectStore.getState().getCurrentProject()?.id,
-        }),
+        body: async () => {
+          const currentProject = useProjectStore.getState().getCurrentProject();
+
+          // Get files from Sandpack via rightPanelRef
+          let files: string[] = [];
+          try {
+            const panelRef = getRightPanelRef();
+            if (panelRef) {
+              // Wait for Sandpack to be ready before getting files
+              if (panelRef.waitForReady) {
+                console.log('[Transport] Waiting for Sandpack to be ready...');
+                await panelRef.waitForReady();
+                console.log('[Transport] Sandpack is ready!');
+              }
+
+              if (panelRef.getFiles) {
+                const sandpackFiles = panelRef.getFiles();
+                if (sandpackFiles && typeof sandpackFiles === 'object') {
+                  files = Object.keys(sandpackFiles);
+                }
+              }
+            }
+          } catch (error) {
+            console.warn('[Transport] Failed to get files from Sandpack:', error);
+          }
+
+          console.log('[Transport] Sending files:', files);
+
+          // Get file organization instruction from environment or project settings
+          const fileInstruction = process.env.NEXT_PUBLIC_FILE_INSTRUCTION || `
+## File Organization Rules
+
+**Entry Point:**
+- /App.tsx - Main application component (root component, this is where you start)
+- /index.tsx - React entry point (already configured, rarely needs changes)
+- /styles.css - Base styles with Tailwind CSS variables (already configured, do not modify unless user explicitly requests)
+
+**Project Structure:**
+- Reusable React components → src/components/ (e.g., src/components/button.tsx, src/components/user-card.tsx)
+- Utility functions → src/utils/ (e.g., src/utils/format-date.ts, src/utils/api-client.ts)
+- Type definitions → src/types/ (e.g., src/types/user.ts, src/types/api.ts)
+- Custom hooks → src/hooks/ (e.g., src/hooks/use-auth.ts)
+- API/data fetching → src/api/ (e.g., src/api/users.ts)
+
+**Naming Convention:**
+- Use kebab-case for all file names (e.g., user-profile.tsx, api-client.ts)
+- Component files should match component name (e.g., UserProfile in user-profile.tsx)
+
+**When to create new files:**
+- Start by modifying /App.tsx for the main UI
+- Create new files in src/* only when you need reusable components or utilities
+          `.trim();
+
+          return {
+            projectId: currentProject?.id,
+            files: files,
+            fileInstruction: fileInstruction,
+          };
+        },
       }),
     []
   );
@@ -50,9 +106,13 @@ export default function Home() {
       abortControllerRef.current = null;
     },
     async onToolCall({ toolCall }) {
-      await clientToolCall({ toolCall, addToolResult });
+      console.log('[Home] Tool call received:', toolCall.toolName);
+      const panelRef = getRightPanelRef();
+      await clientToolCall({ toolCall, addToolResult, sandpackAPI: panelRef });
+      console.log('[Home] Tool call completed:', toolCall.toolName);
     },
-    onFinish: () => {
+    onFinish: (message) => {
+      console.log('[Home] Chat finished, message:', message);
       setIsPending(false);
       abortControllerRef.current = null;
     },
@@ -122,30 +182,30 @@ export default function Home() {
     }
 
     shouldCancelRef.current = false;
-    
+
     if (!project || messages.length === 0) {
       setIsInitializing(true);
       setIsPending(true);
-      
+
       try {
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         const nextProject = await createProject(`website-${Date.now()}`);
-        
+
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         setProject(nextProject);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
-        
+
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         abortControllerRef.current = new AbortController();
         sendUserMessage(trimmed);
 
