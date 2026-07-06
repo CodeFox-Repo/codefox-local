@@ -1,37 +1,50 @@
-import { streamText, convertToModelMessages } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { spawn } from "child_process";
-import { ProjectManager } from "@/lib/project-manager";
-import {
-  defineServerSideTool,
-  defineClientSideTool,
-  writeFileSchema,
-  executeCommandSchema,
-  tryStartDevServerSchema,
-  type WriteFileOutput,
-  type ExecuteCommandOutput,
-} from "@/lib/tool-definitions";
+import { existsSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createSystemPrompt } from "@/lib/prompts";
+import { clientSideTools } from "@/lib/client-tools-definitions";
+import { resolveEngine } from "@/lib/engine/resolve";
+import { streamHarnessTurn } from "@/lib/engine/harness";
+import { ProjectManager } from "@/lib/project-manager";
 
-const projectManager = ProjectManager.getInstance();
+// The harness bridge spawns a local child process — this route must run in
+// the Node.js runtime, never edge.
+export const runtime = "nodejs";
 
-// Create OpenRouter client
-const openrouter = createOpenRouter({
+// OpenRouter speaks the OpenAI chat-completions API; @ai-sdk/openai is the
+// ai@7-compatible client for it (@openrouter/ai-sdk-provider peers ai@6).
+const openrouter = createOpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY || "",
 });
 
+/** Resolve the on-disk project directory for a projectId. */
+function resolveProjectDir(projectId: string): string | null {
+  const known = ProjectManager.getInstance().getProject(projectId)?.path;
+  if (known) return known;
+  // ProjectManager state is in-memory; fall back to the on-disk layout.
+  const fallback = path.join(os.homedir(), ".codefox-local", "projects", projectId);
+  return existsSync(fallback) ? fallback : null;
+}
+
+/** Newest user message text — the harness session is stateful, it only needs the latest turn. */
+function lastUserText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "user") continue;
+    return message.parts
+      .filter((part): part is Extract<typeof part, { type: "text" }> => part.type === "text")
+      .map((part) => part.text)
+      .join("\n");
+  }
+  return "";
+}
 
 export async function POST(req: Request) {
   try {
-    const { messages, projectId } = await req.json();
-
-    // Validate API key
-    if (!process.env.OPENROUTER_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OpenRouter API key not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const { messages, projectId, files, fileContents, fileInstruction } = await req.json();
 
     // Validate project ID
     if (!projectId) {
@@ -41,151 +54,45 @@ export async function POST(req: Request) {
       );
     }
 
-    // Convert UIMessages to ModelMessages
-    const modelMessages = convertToModelMessages(messages);
+    const engine = resolveEngine();
 
-    // Helper function to extract URL from dev server output
-    const extractUrl = (output: string): string | null => {
-      const patterns = [
-        /Local:\s+(https?:\/\/[^\s]+)/,           // Vite
-        /url:\s+(https?:\/\/[^\s]+)/,             // Next.js
-        /(https?:\/\/localhost:\d+)/,             // Generic
-      ];
-
-      for (const pattern of patterns) {
-        const match = output.match(pattern);
-        if (match) return match[1].replace(/\/$/, ''); // Remove trailing slash
+    if (engine === "claude" || engine === "codex") {
+      const projectDir = resolveProjectDir(projectId);
+      if (!projectDir) {
+        return new Response(
+          JSON.stringify({ error: `Project ${projectId} not found on disk` }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
       }
+      const prompt = lastUserText(messages);
+      if (!prompt) {
+        return new Response(
+          JSON.stringify({ error: "No user message to send" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      // The harness runtime owns its own coding tools and works on the
+      // project directory directly — no client-side tools, no file snapshot.
+      return await streamHarnessTurn({ vendor: engine, projectDir, prompt });
+    }
 
-      return null;
-    };
+    // OpenRouter path
+    if (!process.env.OPENROUTER_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "OpenRouter API key not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    // TODO: When moving to remote/cloud deployment, these tools should be proxied
-    // to a VM sandbox environment for security and isolation. The right panel
-    // should connect to the sandbox's dev server instead of localhost.
-    //
-    // Architecture for remote deployment:
-    // 1. User request → Chat API
-    // 2. Chat API → VM Sandbox Proxy
-    // 3. VM Sandbox executes tools (writeFile, executeCommand)
-    // 4. Right panel iframe → VM Sandbox dev server (e.g., https://sandbox-{id}.example.com)
-    //
-    // For now, these tools execute on the local server where the app is running.
-    const tools = {
-      writeFile: defineServerSideTool({
-        description: "Write content to a file in the project. Creates directories if needed.",
-        inputSchema: writeFileSchema,
-        execute: async (input): Promise<WriteFileOutput> => {
-          try {
-            await projectManager.writeFile(projectId, input.path, input.content);
-            return {
-              success: true,
-              message: `File ${input.path} written successfully`,
-            };
-          } catch (error) {
-            return {
-              success: false,
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        },
-      }),
-      executeCommand: defineServerSideTool({
-        description: "Execute a shell command in the project directory. For dev servers (npm run dev), use keepAlive=true to run in background.",
-        inputSchema: executeCommandSchema,
-        execute: async (input): Promise<ExecuteCommandOutput> => {
-          const { command, keepAlive = false } = input;
-          try {
-            if (keepAlive) {
-              // Start dev server in background
-              const projectPath = projectManager.getProjectPath(projectId);
+    // Convert UIMessages to ModelMessages
+    const modelMessages = await convertToModelMessages(messages);
 
-              return new Promise((resolve, reject) => {
-                const proc = spawn(command, {
-                  cwd: projectPath,
-                  shell: true,
-                  detached: true,
-                  stdio: ['ignore', 'pipe', 'pipe'],
-                });
-
-                let output = '';
-
-                // Collect output
-                proc.stdout?.on('data', (data: Buffer) => {
-                  output += data.toString();
-
-                  // Try to extract URL
-                  const url = extractUrl(output);
-                  if (url) {
-                    proc.unref(); // Detach so it keeps running
-                    resolve({
-                      success: true,
-                      stdout: output,
-                      previewUrl: url,
-                      pid: proc.pid,
-                      message: `Dev server started at ${url}`,
-                    });
-                  }
-                });
-
-                proc.stderr?.on('data', (data: Buffer) => {
-                  output += data.toString();
-
-                  const url = extractUrl(output);
-                  if (url) {
-                    proc.unref();
-                    resolve({
-                      success: true,
-                      stdout: output,
-                      previewUrl: url,
-                      pid: proc.pid,
-                      message: `Dev server started at ${url}`,
-                    });
-                  }
-                });
-
-                proc.on('error', (error) => {
-                  reject({
-                    success: false,
-                    error: `Failed to start: ${error.message}`,
-                  });
-                });
-
-                // Timeout - commented out to allow any type of background job
-                // setTimeout(() => {
-                //   if (!extractUrl(output)) {
-                //     proc.kill();
-                //     reject({
-                //       success: false,
-                //       error: 'Server started but no URL found',
-                //       stdout: output.substring(0, 500),
-                //     });
-                //   }
-                // }, timeout);
-              });
-            } else {
-              // Normal execution
-              const result = await projectManager.executeCommand(projectId, command);
-              return {
-                success: true,
-                stdout: result.stdout,
-                stderr: result.stderr,
-              };
-            }
-          } catch (error) {
-            return {
-              success: false,
-              error: error instanceof Error ? error.message : "Unknown error",
-            };
-          }
-        },
-      }),
-      // Client-side tool: tryStartDevServer
-      tryStartDevServer: defineClientSideTool({
-        description: "Try to start the development server for the current project. This will run 'bun install && bun dev' and automatically detect the server URL. Call this tool when you have completed your work and want to preview the result.",
-        inputSchema: tryStartDevServerSchema,
-      }),
-    };
+    // Create system prompt with file contents and organization instructions
+    const systemPrompt = createSystemPrompt({
+      files,
+      fileContents,
+      fileInstruction
+    });
 
     // Stream the response with tools
     const result = streamText({
@@ -193,12 +100,14 @@ export async function POST(req: Request) {
         process.env.NEXT_PUBLIC_DEFAULT_MODEL || "anthropic/claude-sonnet-4.5"
       ),
       messages: modelMessages,
-      system: createSystemPrompt(),
-      tools,
+      system: systemPrompt,
+      tools: clientSideTools,
       temperature: 0.7,
+      maxOutputTokens: 16384,
+      stopWhen: stepCountIs(100),
     });
 
-    // Return UIMessage stream response (AI SDK v5)
+    // Return UIMessage stream response
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Chat API error:", error);

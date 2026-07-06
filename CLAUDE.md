@@ -48,3 +48,63 @@ An AI-powered local website project generator that allows users to create comple
    - Date objects are serialized to strings in localStorage
    - Always handle both Date and string types when accessing `lastAccessedAt` or `createdAt`
    - Use custom deserialization in `createJSONStorage` getItem
+
+4. **Loading external packages (CSS/JS) in Sandpack preview**:
+   - Sandpack runs in a browser sandbox and cannot access node_modules directly
+   - ❌ WRONG: Adding `<script src="https://cdn.tailwindcss.com"></script>` in `/public/index.html`
+   - ❌ WRONG: Using `@import "tailwindcss"` in CSS (requires PostCSS, not available in browser)
+   - ✅ CORRECT: Use `externalResources` option in SandpackProvider:
+     ```tsx
+     <SandpackProvider
+       options={{
+         externalResources: ["https://cdn.tailwindcss.com"]
+       }}
+     >
+     ```
+   - This method works for ANY external CSS/JS library (e.g., Bootstrap, Alpine.js, etc.)
+   - The resources are automatically injected into the Sandpack iframe at initialization
+
+## Modifying AI Prompt System
+
+When you need to add new context to the AI's system prompt (e.g., file organization rules, coding standards, etc.):
+
+### Steps to modify prompt:
+
+1. **Update `lib/prompts.ts`**:
+   - Add new parameter to `createSystemPrompt` function options
+   - Create a new section function (e.g., `createFileInstructionSection`)
+   - Add the section to the sections array
+
+2. **Update API route `app/api/chat/route.ts`**:
+   - Extract the new parameter from request body: `const { messages, projectId, files, newParam } = await req.json()`
+   - Pass it to `createSystemPrompt({ files, newParam })`
+
+3. **Update frontend transport `app/page.tsx`**:
+   - In the `transport` useMemo, add the new data to the return object in `body: async () => { ... }`
+   - Can use environment variables: `process.env.NEXT_PUBLIC_YOUR_VAR`
+   - Return: `{ projectId, files, newParam }`
+
+### Example: Adding file organization instructions
+
+```typescript
+// 1. lib/prompts.ts
+export function createSystemPrompt(options?: {
+  files?: string[];
+  fileInstruction?: string;  // ← New parameter
+}): string {
+  // ...
+  if (options?.fileInstruction) {
+    sections.push(createFileInstructionSection(options.fileInstruction));
+  }
+}
+
+// 2. app/api/chat/route.ts
+const { messages, projectId, files, fileInstruction } = await req.json();
+const systemPrompt = createSystemPrompt({ files, fileInstruction });
+
+// 3. app/page.tsx
+body: async () => {
+  const fileInstruction = process.env.NEXT_PUBLIC_FILE_INSTRUCTION || "default rules";
+  return { projectId, files, fileInstruction };
+}
+```

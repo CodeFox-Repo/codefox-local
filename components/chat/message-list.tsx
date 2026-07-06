@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./chat-message";
 import { WelcomeScreen } from "./welcome-screen";
 import { ToolCall } from "@/components/tools/tool-call";
-import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from "ai";
+import { isToolUIPart, getToolOrDynamicToolName } from "ai";
 import type { UIMessage } from "ai";
 
 interface MessageListProps {
@@ -51,7 +51,7 @@ export function MessageList({ messages, isLoading, onPromptClick, onShowHistory,
             .join("");
 
           // Extract tool-related parts
-          const toolParts = message.parts.filter(isToolOrDynamicToolUIPart);
+          const toolParts = message.parts.filter(isToolUIPart);
 
           return (
             <div key={message.id} className="space-y-2 min-w-0">

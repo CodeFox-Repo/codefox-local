@@ -1,222 +1,264 @@
 "use client";
 
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, ExternalLink, Code, Eye, Loader2, XCircle, Globe } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
+import { Code, Eye, Loader2 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
-import { Input } from "@/components/ui/input";
+import { SandpackEditor } from "@/components/preview/code-editor";
+import { 
+  SandpackProvider,
+  SandpackPreview,
+  useSandpack
+} from "@codesandbox/sandpack-react";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
+import { useSandpackFiles } from "@/hooks/use-sandpack-files";
+import { CODEFOX_SANDPACK_TEMPLATE } from "@/lib/sandpack-template";
+import "@/components/preview/code-editor/sandpack-custom.css";
 
-interface RightPanelProps {
-  generatedCode?: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface RightPanelProps {}
 
 export interface RightPanelRef {
-  setUrl: (url: string) => void;
+  writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>;
+  getFiles: () => Record<string, string>;
+  waitForReady: () => Promise<void>;
+  isReady: () => boolean;
+}
+
+// Internal component that uses Sandpack context
+interface RightPanelContentProps {
+  activeTab: 'preview' | 'code';
+  setActiveTab: (tab: 'preview' | 'code') => void;
+  currentProject: { id: string; title?: string; createdAt: Date } | null;
+  fileApiRef: React.MutableRefObject<RightPanelRef | null>;
+}
+
+function RightPanelContent({
+  activeTab,
+  setActiveTab,
+  currentProject,
+  fileApiRef
+}: RightPanelContentProps) {
+  const { sandpack } = useSandpack();
+  const { writeFile } = useSandpackFiles();
+  const isLoading = sandpack.status === 'idle' || sandpack.status === 'initial';
+  const readyResolversRef = useRef<Array<() => void>>([]);
+
+  // Expose file operations API
+  useEffect(() => {
+    const api: RightPanelRef = {
+      writeFile: async (path: string, content: string) => {
+        const result = writeFile(path, content);
+        return result.success ? { success: true } : { success: false, error: result.error };
+      },
+      getFiles: () => {
+        // Get current files from Sandpack and convert to string format
+        console.log('[RightPanelContent] Sandpack status:', sandpack.status);
+        console.log('[RightPanelContent] Sandpack files:', sandpack.files);
+
+        // Only return files if Sandpack is ready
+        if (sandpack.status === 'idle' || sandpack.status === 'initial') {
+          console.log('[RightPanelContent] Sandpack not ready yet, returning empty files');
+          return {};
+        }
+
+        const files = sandpack.files || {};
+        const result: Record<string, string> = {};
+
+        for (const [path, file] of Object.entries(files)) {
+          if (typeof file === 'object' && file !== null && 'code' in file) {
+            result[path] = (file as { code: string }).code;
+          } else if (typeof file === 'string') {
+            result[path] = file;
+          }
+        }
+
+        console.log('[RightPanelContent] Converted files:', result);
+        return result;
+      },
+      waitForReady: () => {
+        return new Promise<void>((resolve) => {
+          if (sandpack.status === 'running') {
+            resolve();
+          } else {
+            readyResolversRef.current.push(resolve);
+          }
+        });
+      },
+      isReady: () => {
+        return sandpack.status === 'running';
+      },
+    };
+
+    fileApiRef.current = api;
+  }, [writeFile, fileApiRef, sandpack]);
+
+  // Resolve all pending waitForReady promises when Sandpack becomes ready
+  useEffect(() => {
+    if (sandpack.status === 'running') {
+      console.log('[RightPanelContent] Sandpack is ready, resolving pending promises');
+      readyResolversRef.current.forEach(resolve => resolve());
+      readyResolversRef.current = [];
+    }
+  }, [sandpack.status]);
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header: Custom Tabs */}
+      <div className="flex-shrink-0 flex items-center px-2 py-3.5 border-b bg-background">
+        <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
+          <button
+            onClick={() => setActiveTab('preview')}
+            className={cn(
+              "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+              activeTab === 'preview'
+                ? "bg-background text-foreground shadow"
+                : "hover:bg-background/50"
+            )}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
+          </button>
+          <button
+            onClick={() => setActiveTab('code')}
+            className={cn(
+              "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+              activeTab === 'code'
+                ? "bg-background text-foreground shadow"
+                : "hover:bg-background/50"
+            )}
+          >
+            <Code className="h-4 w-4 mr-2" />
+            Code
+          </button>
+        </div>
+      </div>
+
+      {/* Body: All content rendered, controlled by CSS */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Loading overlay when Sandpack is initializing */}
+        {isLoading && activeTab === 'preview' && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <h3 className="text-lg font-semibold">Initializing preview...</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Setting up the development environment
+            </p>
+          </div>
+        )}
+
+        {/* Preview Panel */}
+        <div 
+          className={cn(
+            "absolute inset-0 w-full h-full overflow-hidden bg-white",
+            activeTab === 'preview' ? 'block' : 'hidden'
+          )}
+        >
+          <SandpackPreview
+            className="sandpack-custom-preview"
+            style={{ borderRadius: 0, height: '100%', width: '100%' }}
+            showOpenInCodeSandbox={true}
+          />
+        </div>
+
+        {/* Code Panel */}
+        <div 
+          className={cn(
+            "absolute inset-0 w-full h-full overflow-hidden bg-white",
+            activeTab === 'code' ? 'block' : 'hidden'
+          )}
+        >
+          <SandpackEditor projectId={currentProject?.id || ''} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export const RightPanel = forwardRef<RightPanelRef, RightPanelProps>(
-  ({ generatedCode = "" }, ref) => {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [key, setKey] = useState(0);
-    const [showUrl, setShowUrl] = useState<string>("");
-    const [inputUrl, setInputUrl] = useState<string>("");
+  (_props, ref) => {
+    const [activeTab, setActiveTab] = useState<'preview' | 'code'>('code');
+    const [mounted, setMounted] = useState(false);
+    const { resolvedTheme } = useTheme();
+    const fileApiRef = useRef<RightPanelRef | null>(null);
 
-    const devServer = useProjectStore((state) => state.devServer);
-    const previewUrl = devServer.serverUrl;
-    const serverStatus = devServer.status;
+    const currentProject = useProjectStore((state) => state.getCurrentProject());
 
+    useEffect(() => {
+      setMounted(true);
+    }, []);
+
+    // Expose API to parent via ref
     useImperativeHandle(ref, () => ({
-      setUrl: (url: string) => {
-        setShowUrl(url);
-        setInputUrl(url);
-      }
-    }));
+      writeFile: async (path: string, content: string) => {
+        if (!fileApiRef.current) {
+          return { success: false, error: 'Sandpack not initialized' };
+        }
+        return fileApiRef.current.writeFile(path, content);
+      },
+      getFiles: () => {
+        if (!fileApiRef.current) {
+          console.warn('[RightPanel] getFiles called but fileApiRef is null');
+          return {};
+        }
+        const files = fileApiRef.current.getFiles();
+        console.log('[RightPanel] getFiles result:', files);
+        return files;
+      },
+      waitForReady: async () => {
+        // Wait for fileApiRef to be initialized
+        if (!fileApiRef.current) {
+          console.log('[RightPanel] Waiting for fileApiRef to be initialized...');
+          await new Promise<void>((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (fileApiRef.current) {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 10);
+          });
+        }
+        if (!fileApiRef.current) {
+          throw new Error('Failed to initialize fileApiRef');
+        }
+        return fileApiRef.current.waitForReady();
+      },
+      isReady: () => {
+        if (!fileApiRef.current) {
+          return false;
+        }
+        return fileApiRef.current.isReady();
+      },
+    }), []);
 
-  useEffect(() => {
-    if (previewUrl) {
-      setShowUrl(previewUrl);
-      setInputUrl(previewUrl);
-    }
-  }, [previewUrl]);
-
-  useEffect(() => {
-    if (generatedCode && iframeRef.current) {
-      const iframeDoc = iframeRef.current.contentDocument;
-      if (iframeDoc) {
-        iframeDoc.open();
-        iframeDoc.write(generatedCode);
-        iframeDoc.close();
-      }
-    }
-  }, [generatedCode, key]);
-
-  const handleRefresh = () => {
-    setKey(prev => prev + 1);
-  };
-
-  const handleUrlSubmit = () => {
-    if (inputUrl.trim()) {
-      setShowUrl(inputUrl.trim());
-      setKey(prev => prev + 1);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleUrlSubmit();
-    }
-  };
-
+  // Use 'dark' as default until mounted to avoid hydration mismatch
+  const sandpackTheme = mounted && resolvedTheme === 'light' ? 'light' : 'dark';
 
   return (
-    <Tabs defaultValue="preview" className="flex flex-col h-full gap-0">
-      {/* Header: Tabs + Actions */}
-      <div className="flex-shrink-0 flex items-center justify-between px-2 py-3.5 border-b">
-        <TabsList>
-          <TabsTrigger value="preview">
-            <Eye className="h-4 w-4 mr-2" />
-            Preview
-            {serverStatus === 'running' && (
-              <span className="ml-2 h-2 w-2 bg-green-500 rounded-full animate-pulse" title="Dev server running" />
-            )}
-            {serverStatus === 'starting' && (
-              <Loader2 className="ml-2 h-3 w-3 animate-spin text-blue-500" />
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="code">
-            <Code className="h-4 w-4 mr-2" />
-            Code
-          </TabsTrigger>
-        </TabsList>
-      </div>
-
-      {/* Body: Preview Tab */}
-      <TabsContent value="preview" className="flex-1 m-0 overflow-hidden data-[state=active]:flex data-[state=active]:flex-col">
-        <div className="flex flex-col h-full overflow-hidden">
-          {/* Address Bar */}
-          <div className="flex-shrink-0 flex items-center gap-2 bg-muted/30 border-b px-5 py-2">
-            <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <Input
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter a URL to preview"
-              className="flex-1 border-0 bg-background rounded px-2 py-1 h-auto text-xs font-mono focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 placeholder:text-muted-foreground placeholder:font-sans"
-              title={showUrl || 'Enter a URL'}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 flex-shrink-0 hover:bg-muted"
-              onClick={handleRefresh}
-              disabled={!showUrl}
-              title="Refresh preview"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 flex-shrink-0 hover:bg-muted"
-              onClick={() => window.open(showUrl!, '_blank')}
-              disabled={!showUrl}
-              title="Open in new tab"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          {/* Iframe Content */}
-          <div className="flex-1 overflow-hidden bg-white">
-            {serverStatus === 'starting' && (
-              <div className="flex flex-col items-center justify-center h-full bg-muted/20">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <h3 className="text-lg font-semibold">Starting dev server...</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  This may take a few moments
-                </p>
-              </div>
-            )}
-
-            {serverStatus === 'error' && (
-              <div className="flex flex-col items-center justify-center h-full bg-muted/20">
-                <XCircle className="h-12 w-12 text-red-500 mb-4" />
-                <h3 className="text-lg font-semibold text-red-500">Failed to start dev server</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Check the command output for errors
-                </p>
-              </div>
-            )}
-
-            {showUrl && serverStatus !== 'starting' && (
-              <iframe
-                key={key}
-                src={showUrl}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-                title="Website Preview"
-              />
-            )}
-
-            {!showUrl && serverStatus === 'idle' && generatedCode && (
-              <iframe
-                key={key}
-                ref={iframeRef}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-                title="Website Preview"
-              />
-            )}
-
-            {!showUrl && serverStatus === 'idle' && !generatedCode && (
-              <div className="flex items-center justify-center h-full bg-muted/20">
-                <div className="text-center space-y-2 text-muted-foreground">
-                  <Code className="h-12 w-12 mx-auto opacity-50" />
-                  <h3 className="text-lg font-semibold">No preview available</h3>
-                  <p className="text-sm">
-                    Start a conversation to generate a website or enter a URL
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </TabsContent>
-
-      {/* Body: Code Tab */}
-      <TabsContent value="code" className="flex-1 m-0 overflow-hidden data-[state=active]:flex data-[state=active]:w-full bg-white">
-        {generatedCode ? (
-          <ScrollArea className="flex-1 w-full bg-white">
-            <SyntaxHighlighter
-              language="html"
-              style={oneDark}
-              customStyle={{
-                margin: 0,
-                borderRadius: 0,
-                fontSize: '0.875rem',
-                minHeight: '100%',
-              }}
-            >
-              {generatedCode}
-            </SyntaxHighlighter>
-          </ScrollArea>
-        ) : (
-          <div className="flex items-center justify-center w-full h-full bg-muted/20">
-            <div className="text-center space-y-2 text-muted-foreground">
-              <Code className="h-12 w-12 mx-auto opacity-50" />
-              <h3 className="text-lg font-semibold">No code generated</h3>
-              <p className="text-sm">
-                The generated HTML code will appear here
-              </p>
-            </div>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
+    <SandpackProvider
+      template="react-ts"
+      files={CODEFOX_SANDPACK_TEMPLATE}
+      theme={sandpackTheme}
+      options={{
+        autorun: true,
+        autoReload: true,
+        recompileMode: "delayed",
+        recompileDelay: 500,
+        externalResources: ["https://cdn.tailwindcss.com"],
+        classes: {
+          "sp-wrapper": "custom-wrapper",
+          "sp-layout": "custom-layout",
+          "sp-tab-button": "custom-tab",
+        },
+      }}
+    >
+      <RightPanelContent
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentProject={currentProject}
+        fileApiRef={fileApiRef}
+      />
+    </SandpackProvider>
   );
 });
 

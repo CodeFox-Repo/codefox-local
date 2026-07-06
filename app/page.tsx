@@ -11,7 +11,7 @@ import { SettingsModal } from "@/components/settings/settings-modal";
 import { useProjectStore } from "@/lib/store";
 import { createProject, requestProjectTitle } from "@/lib/client-tools";
 import { clientToolCall } from "@/lib/client-tool-handlers";
-import { setRightPanelRef } from "@/lib/preview-ref";
+import { setRightPanelRef, getRightPanelRef } from "@/lib/preview-ref";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -33,9 +33,76 @@ export default function Home() {
     () =>
       new DefaultChatTransport<UIMessage>({
         api: "/api/chat",
-        body: () => ({
-          projectId: useProjectStore.getState().getCurrentProject()?.id,
-        }),
+        body: async () => {
+          const currentProject = useProjectStore.getState().getCurrentProject();
+
+          // Get file contents from Sandpack via rightPanelRef
+          let fileContents: Record<string, string> = {};
+          try {
+            const panelRef = getRightPanelRef();
+            if (panelRef) {
+              // Wait for Sandpack to be ready before getting files
+              if (panelRef.waitForReady) {
+                console.log('[Transport] Waiting for Sandpack to be ready...');
+                await panelRef.waitForReady();
+                console.log('[Transport] Sandpack is ready!');
+              }
+
+              if (panelRef.getFiles) {
+                const sandpackFiles = panelRef.getFiles();
+                if (sandpackFiles && typeof sandpackFiles === 'object') {
+                  fileContents = sandpackFiles;
+                }
+              }
+            }
+          } catch (error) {
+            console.warn('[Transport] Failed to get files from Sandpack:', error);
+          }
+
+          console.log('[Transport] Sending file contents:', Object.keys(fileContents));
+
+          // Get file organization instruction from environment or project settings
+          const fileInstruction = process.env.NEXT_PUBLIC_FILE_INSTRUCTION || `
+## File Organization & Workflow
+
+**CRITICAL - Start Here:**
+- /App.tsx - Main application component. THIS IS WHERE YOU START. Modify this first for the main UI.
+- /index.tsx - React entry point (already configured, do not modify)
+- /styles.css - Base Tailwind CSS variables (already configured with design system, do not modify unless user explicitly requests)
+
+**Project Structure (Create only when needed):**
+- src/components/ - Reusable React components (e.g., button.tsx, user-card.tsx)
+- src/utils/ - Utility functions (e.g., format-date.ts, api-client.ts)
+- src/types/ - TypeScript type definitions (e.g., user.ts, api.ts)
+- src/hooks/ - Custom React hooks (e.g., use-auth.ts)
+- src/api/ - API/data fetching logic (e.g., users.ts)
+
+**Design System (Follow Strictly):**
+- NEVER use explicit colors like text-white, bg-white, text-black in components
+- ALWAYS use Tailwind design tokens from styles.css (e.g., bg-background, text-foreground, bg-primary)
+- The design system is already configured with beautiful colors, gradients, and CSS variables
+- Use semantic color classes: bg-primary, bg-secondary, bg-accent, bg-muted, etc.
+- For dark mode, use dark: prefix (e.g., dark:bg-background) - it's already configured
+
+**Coding Standards:**
+- File names: kebab-case (user-profile.tsx, api-client.ts)
+- Component names: PascalCase matching file name (UserProfile in user-profile.tsx)
+- Create small, focused components instead of large monolithic files
+- MAXIMIZE EFFICIENCY: Focus on what user explicitly requested, avoid scope creep
+
+**Workflow:**
+1. Start by editing /App.tsx for main UI
+2. Create src/* files only when you need reusable components or utilities
+3. Keep it simple and elegant - don't overengineer
+4. Use the design system tokens consistently
+          `.trim();
+
+          return {
+            projectId: currentProject?.id,
+            fileContents: fileContents,
+            fileInstruction: fileInstruction,
+          };
+        },
       }),
     []
   );
@@ -50,9 +117,13 @@ export default function Home() {
       abortControllerRef.current = null;
     },
     async onToolCall({ toolCall }) {
-      await clientToolCall({ toolCall, addToolResult });
+      console.log('[Home] Tool call received:', toolCall.toolName);
+      const panelRef = getRightPanelRef();
+      await clientToolCall({ toolCall, addToolResult, sandpackAPI: panelRef });
+      console.log('[Home] Tool call completed:', toolCall.toolName);
     },
-    onFinish: () => {
+    onFinish: (message) => {
+      console.log('[Home] Chat finished, message:', message);
       setIsPending(false);
       abortControllerRef.current = null;
     },
@@ -122,30 +193,30 @@ export default function Home() {
     }
 
     shouldCancelRef.current = false;
-    
+
     if (!project || messages.length === 0) {
       setIsInitializing(true);
       setIsPending(true);
-      
+
       try {
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         const nextProject = await createProject(`website-${Date.now()}`);
-        
+
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         setProject(nextProject);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
-        
+
         if (shouldCancelRef.current) {
           return;
         }
-        
+
         abortControllerRef.current = new AbortController();
         sendUserMessage(trimmed);
 

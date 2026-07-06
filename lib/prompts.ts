@@ -1,6 +1,9 @@
 // Main system prompt builder
 export function createSystemPrompt(options?: {
   isFirstMessage?: boolean;
+  files?: string[];
+  fileContents?: Record<string, string>;
+  fileInstruction?: string;
 }): string {
   const sections = [
     createIdentitySection(),
@@ -12,6 +15,20 @@ export function createSystemPrompt(options?: {
 
   if (options?.isFirstMessage) {
     sections.push(createFirstMessageSection());
+  }
+
+  // Add file contents context if provided (preferred over just file paths)
+  if (options?.fileContents && Object.keys(options.fileContents).length > 0) {
+    sections.push(createFileContentsSection(options.fileContents));
+  }
+  // Fallback to file structure if only paths are provided
+  else if (options?.files && options.files.length > 0) {
+    sections.push(createFileStructureSection(options.files));
+  }
+
+  // Add file organization instructions if provided
+  if (options?.fileInstruction) {
+    sections.push(createFileInstructionSection(options.fileInstruction));
   }
 
   return sections.join('\n\n');
@@ -34,7 +51,7 @@ Always reply in the same language as the user's message.
 
 ## Interface Layout
 
-On the left side of the interface, there's a chat window where users chat with you. On the right side, there's a live preview window (iframe) where users can see the changes being made to their application in real-time. When you make code changes and start the dev server, users will see the updates immediately in the preview window.`;
+On the left side of the interface, there's a chat window where users chat with you. On the right side, there's a live preview window where users can see the changes being made to their application in real-time. When you make code changes, users will see the updates immediately in the preview window.`;
 }
 
 // Behavioral guidelines and workflow
@@ -82,9 +99,12 @@ COMMUNICATE ACTIONS: Before performing any changes, briefly inform the user what
 
 7. VERIFY & CONCLUDE:
    - Ensure all changes are complete and correct
-   - **CRITICAL**: Call \`tryStartDevServer\` to start the development server
-   - Conclude with a very concise summary of the changes you made
-   - Avoid emojis`;
+   - Changes are immediately visible in the preview panel
+   - **REQUIRED**: You MUST call the attemptCompletion tool when you finish the task
+   - Provide a brief summary of what was built
+   - Avoid emojis
+
+**IMPORTANT**: After creating all files, you MUST call attemptCompletion with a summary. Do not end your response without calling this tool.`;
 }
 
 // Available tools and usage examples
@@ -98,53 +118,26 @@ You have access to the following tools to help you complete tasks:
   - Parameters: \`{ path: string, content: string }\`
   - Example: \`writeFile({ path: "src/App.tsx", content: "..." })\`
 
-### Command Execution
-- **executeCommand**: Execute shell commands in the project directory
-  - Parameters: \`{ command: string, keepAlive?: boolean }\`
-  - Use \`keepAlive: true\` for background processes like dev servers
-  - Returns preview URL when a dev server starts
-  - Examples:
-    - Explore project: \`executeCommand({ command: "ls -la" })\`
-    - Check structure: \`executeCommand({ command: "find . -type f -name '*.json'" })\`
-    - Install deps: \`executeCommand({ command: "bun install" })\`
-    - Run build: \`executeCommand({ command: "bun run build" })\`
-    - Start server: \`executeCommand({ command: "bun run dev", keepAlive: true })\`
-
-### Preview Management
-- **tryStartDevServer**: Try to start the development server and automatically detect the URL (client-side tool)
-  - Parameters: \`{ reason?: string }\`
-  - Automatically runs \`bun install && bun dev\` and detects the server URL
-  - Updates the preview iframe automatically when URL is detected
-  - **REQUIRED**: You MUST call this tool after completing your implementation
-  - Example: \`tryStartDevServer({ reason: "Starting dev server after creating the project" })\`
+### Task Completion
+- **attemptCompletion**: Mark the task as complete and provide a summary
+  - Parameters: \`{ summary: string }\`
+  - **IMPORTANT**: Always use this tool when you finish implementing the user's request
+  - Example: \`attemptCompletion({ summary: "Created a modern landing page with responsive design, hero section, and contact form" })\`
 
 ### Common Workflows
 
-**Exploring an existing project:**
+**Creating a new project:**
 \`\`\`
-1. executeCommand({ command: "ls -la" }) // Check project structure
-2. executeCommand({ command: "cat package.json" }) // Check dependencies
-3. executeCommand({ command: "find . -type f -name '*.tsx' | head -10" }) // Find source files
-\`\`\`
-
-**Setting up a new project:**
-\`\`\`
-1. writeFile({ path: "package.json", content: "..." }) // Create package.json
+1. writeFile({ path: "src/App.tsx", content: "..." }) // Create main component
 2. writeFile({ path: "src/index.tsx", content: "..." }) // Create entry file
-3. tryStartDevServer({ reason: "Starting dev server for new project" }) // Install deps + start server + update preview
+3. writeFile({ path: "package.json", content: "..." }) // Create package.json
 \`\`\`
 
-**Package Manager:**
-- This project uses **bun** as the package manager
-- Use \`bun install\` instead of \`npm install\`
-- Use \`bun run\` instead of \`npm run\`
-- Bun is faster and more efficient than npm/yarn
-
-**Development Server:**
-- NEVER manually run \`bun install\` or \`bun dev\` commands
-- ALWAYS use the \`tryStartDevServer\` tool instead
-- This tool handles dependency installation, server startup, and preview updates automatically
-- You MUST call \`tryStartDevServer\` after completing your implementation`;
+**Real-time Preview:**
+- All changes are immediately visible in the preview panel
+- No need to start development servers manually
+- Sandpack handles all compilation and preview automatically
+- Files are managed in-memory for instant updates`;
 }
 
 // Efficiency rules and common pitfalls
@@ -152,19 +145,16 @@ function createEfficiencySection(): string {
   return `## Efficient Tool Usage
 
 ### CARDINAL RULES:
-1. ALWAYS batch multiple operations when possible
-2. NEVER make sequential tool calls that could be combined
-3. Use the most appropriate tool for each task
+1. ALWAYS batch ALL file operations in a SINGLE response
+2. Call ALL writeFile tools you need at once (you can call writeFile multiple times in one response)
+3. NEVER stop after writing just a few files - complete the entire project in one go
+4. Use the most appropriate tool for each task
 
 ### EFFICIENT FILE OPERATIONS
 - Use writeFile for creating new files or complete rewrites
 - Read files when you need to understand existing code
 - List files to explore directory structure
 
-### EFFICIENT COMMAND EXECUTION
-- Use executeCommand for any shell operations: install packages, run builds, start servers
-- Use keepAlive: true for long-running processes like dev servers
-- Chain independent commands with && when they don't need to run in background
 
 ## Common Pitfalls to AVOID
 
@@ -181,7 +171,9 @@ function createOutputSection(): string {
 
 - ALWAYS generate beautiful and responsive designs
 - Maximize reusability of components
-- Create a consistent design system using CSS/Tailwind
+- **Prefer Tailwind CSS inline classes** over modifying styles.css
+- Use semantic Tailwind classes: bg-background, text-foreground, bg-primary, bg-accent, etc.
+- Only modify /styles.css if user explicitly requests custom CSS variables or theme changes
 - Pay attention to contrast, color, and typography
 - Beautiful designs are your top priority
 
@@ -203,9 +195,55 @@ When a user describes what they want to build:
 3. List what features you'll implement in this first version (don't do too much)
 4. Consider colors, gradients, animations, fonts if relevant
 5. Start implementing:
-   - Create the necessary files
-   - Call \`tryStartDevServer\` to install dependencies and start the server
+   - Create ALL necessary files in a SINGLE response
+   - Preview will update automatically in real-time
+6. **REQUIRED**: After creating all files, call attemptCompletion with a summary
+
+**CRITICAL**: You must end every implementation with attemptCompletion. Never finish without calling this tool.
 
 Keep explanations very short and focus on delivering working code quickly!`;
+}
+
+// File structure context
+function createFileStructureSection(files: string[]): string {
+  const fileList = files
+    .sort()
+    .map(path => `📄 ${path}`)
+    .join('\n');
+
+  return `## Current Project Files
+
+${fileList}
+
+You can see the current files in the project. Use this information to understand the existing codebase before making changes.`;
+}
+
+// File contents context (preferred over file structure)
+function createFileContentsSection(fileContents: Record<string, string>): string {
+  const filePaths = Object.keys(fileContents).sort();
+
+  const fileBlocks = filePaths.map(path => {
+    const content = fileContents[path];
+    return `### ${path}
+
+\`\`\`
+${content}
+\`\`\``;
+  }).join('\n\n');
+
+  return `## Current Project Files
+
+You have access to all current project files with their complete contents. Use this context to understand the existing codebase before making changes.
+
+${fileBlocks}`;
+}
+
+// File organization instructions
+function createFileInstructionSection(instruction: string): string {
+  return `## File Organization Guidelines
+
+${instruction}
+
+Follow these guidelines when creating or modifying files. This ensures consistency with the project's file structure and organization conventions.`;
 }
 

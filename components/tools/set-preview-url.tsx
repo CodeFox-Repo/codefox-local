@@ -1,6 +1,10 @@
 import { Monitor, CheckCircle2, XCircle } from "lucide-react";
-import type { SetPreviewUrlInput, SetPreviewUrlOutput } from "@/lib/tool-definitions";
 import type { RenderResult } from "./types";
+
+// Local types: the setPreviewUrl tool schema was removed from
+// lib/tool-definitions, but historical messages still render these parts.
+type SetPreviewUrlInput = { url: string };
+type SetPreviewUrlOutput = { success?: boolean; message?: string };
 
 export function renderToolSetPreviewUrl({
   input,

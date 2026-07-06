@@ -1,6 +1,10 @@
 import { PlayCircle, CheckCircle2, XCircle } from "lucide-react";
-import type { TryStartDevServerInput, TryStartDevServerOutput } from "@/lib/tool-definitions";
 import type { RenderResult } from "./types";
+
+// Local types: the tryStartDevServer tool schema was removed from
+// lib/tool-definitions, but historical messages still render these parts.
+type TryStartDevServerInput = { reason?: string };
+type TryStartDevServerOutput = { success?: boolean; url?: string; message?: string; error?: string };
 
 export function renderToolTryStartDevServer({
   input,
