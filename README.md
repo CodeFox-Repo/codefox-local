@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/CodeFox-Repo/codefox-local/main/assets/banner.svg" width="100%" alt="codefox local">
+
 # CodeFox Local 🦊
 
 A local-first AI website generator: describe the site you want, and CodeFox builds it in a live Sandpack preview, editing real project files under `~/.codefox-local/projects`. Built with Next.js 15, Bun, and the Vercel AI SDK.
