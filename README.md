@@ -1,6 +1,6 @@
-# CodeFox Chat 🦊
+# CodeFox Local 🦊
 
-A sleek, geek-style chat application with AI assistant and integrated web preview. Built with Next.js 15, Bun, and Claude Sonnet 4.5.
+A local-first AI website generator: describe the site you want, and CodeFox builds it in a live Sandpack preview, editing real project files under `~/.codefox-local/projects`. Built with Next.js 15, Bun, and the Vercel AI SDK.
 
 ## 🎨 Features
 
@@ -19,8 +19,13 @@ A sleek, geek-style chat application with AI assistant and integrated web previe
 - **Runtime**: Bun
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
-- **AI SDK**: Vercel AI SDK v5
-- **AI Model**: Claude Sonnet 4.5 (via OpenRouter)
+- **AI SDK**: Vercel AI SDK v7
+- **Supported engines** (auto-detected in this order, first match wins):
+  1. **Claude Code** — uses your local `claude` CLI login (subscription, no API key), default when installed and logged in
+  2. **Codex** — uses your local `codex` CLI login
+  3. **OpenRouter** — API fallback, needs `OPENROUTER_API_KEY`
+
+  Force a specific engine with `CODEFOX_ENGINE=claude|codex|openrouter`. The local engines run through `@ai-sdk/harness` rooted at the project directory, so the agent edits your project files directly with its own coding tools.
 - **Icons**: Lucide React
 - **Markdown**: react-markdown + react-syntax-highlighter
 
@@ -41,15 +46,21 @@ cp .env.example .env.local
 
 ## 🔑 Configuration
 
-Create a `.env.local` file with your OpenRouter API key:
+With a logged-in `claude` or `codex` CLI on your PATH, no configuration is needed — the engine is detected automatically. Otherwise create a `.env.local`:
 
 ```env
+# Optional: force an engine instead of auto-detection (claude | codex | openrouter)
+CODEFOX_ENGINE=
+
+# Required only for the OpenRouter engine
 OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# OpenRouter model (harness engines use the CLI's default model)
 NEXT_PUBLIC_DEFAULT_MODEL=anthropic/claude-sonnet-4.5
-NEXT_PUBLIC_APP_NAME=CodeFox Chat
+NEXT_PUBLIC_APP_NAME=CodeFox Local
 ```
 
-Get your OpenRouter API key from: https://openrouter.ai/
+Get an OpenRouter API key from: https://openrouter.ai/ — project title generation also uses OpenRouter and is skipped without a key.
 
 ## 🎯 Usage
 

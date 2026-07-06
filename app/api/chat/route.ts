@@ -1,30 +1,50 @@
-import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { existsSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createSystemPrompt } from "@/lib/prompts";
 import { clientSideTools } from "@/lib/client-tools-definitions";
+import { resolveEngine } from "@/lib/engine/resolve";
+import { streamHarnessTurn } from "@/lib/engine/harness";
+import { ProjectManager } from "@/lib/project-manager";
 
-// const projectManager = ProjectManager.getInstance();
+// The harness bridge spawns a local child process — this route must run in
+// the Node.js runtime, never edge.
+export const runtime = "nodejs";
 
-// Create OpenRouter client
-const openrouter = createOpenRouter({
+// OpenRouter speaks the OpenAI chat-completions API; @ai-sdk/openai is the
+// ai@7-compatible client for it (@openrouter/ai-sdk-provider peers ai@6).
+const openrouter = createOpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY || "",
 });
 
+/** Resolve the on-disk project directory for a projectId. */
+function resolveProjectDir(projectId: string): string | null {
+  const known = ProjectManager.getInstance().getProject(projectId)?.path;
+  if (known) return known;
+  // ProjectManager state is in-memory; fall back to the on-disk layout.
+  const fallback = path.join(os.homedir(), ".codefox-local", "projects", projectId);
+  return existsSync(fallback) ? fallback : null;
+}
+
+/** Newest user message text — the harness session is stateful, it only needs the latest turn. */
+function lastUserText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "user") continue;
+    return message.parts
+      .filter((part): part is Extract<typeof part, { type: "text" }> => part.type === "text")
+      .map((part) => part.text)
+      .join("\n");
+  }
+  return "";
+}
 
 export async function POST(req: Request) {
   try {
     const { messages, projectId, files, fileContents, fileInstruction } = await req.json();
-    console.log('files', files);
-    console.log('fileContents', fileContents ? Object.keys(fileContents) : 'none');
-    console.log('fileInstruction', fileInstruction);
-
-    // Validate API key
-    if (!process.env.OPENROUTER_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OpenRouter API key not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
 
     // Validate project ID
     if (!projectId) {
@@ -34,24 +54,38 @@ export async function POST(req: Request) {
       );
     }
 
+    const engine = resolveEngine();
+
+    if (engine === "claude" || engine === "codex") {
+      const projectDir = resolveProjectDir(projectId);
+      if (!projectDir) {
+        return new Response(
+          JSON.stringify({ error: `Project ${projectId} not found on disk` }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const prompt = lastUserText(messages);
+      if (!prompt) {
+        return new Response(
+          JSON.stringify({ error: "No user message to send" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      // The harness runtime owns its own coding tools and works on the
+      // project directory directly — no client-side tools, no file snapshot.
+      return await streamHarnessTurn({ vendor: engine, projectDir, prompt });
+    }
+
+    // OpenRouter path
+    if (!process.env.OPENROUTER_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "OpenRouter API key not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Convert UIMessages to ModelMessages
-    const modelMessages = convertToModelMessages(messages);
-
-    // Helper function to extract URL from dev server output (unused for now)
-    // const extractUrl = (output: string): string | null => {
-    //   const patterns = [
-    //     /Local:\s+(https?:\/\/[^\s]+)/,           // Vite
-    //     /url:\s+(https?:\/\/[^\s]+)/,             // Next.js
-    //     /(https?:\/\/localhost:\d+)/,             // Generic
-    //   ];
-
-    //   for (const pattern of patterns) {
-    //     const match = output.match(pattern);
-    //     if (match) return match[1].replace(/\/$/, ''); // Remove trailing slash
-    //   }
-
-    //   return null;
-    // };
+    const modelMessages = await convertToModelMessages(messages);
 
     // Create system prompt with file contents and organization instructions
     const systemPrompt = createSystemPrompt({
@@ -71,12 +105,9 @@ export async function POST(req: Request) {
       temperature: 0.7,
       maxOutputTokens: 16384,
       stopWhen: stepCountIs(100),
-      onStepFinish: (step) => {
-        console.log('[StreamText] Step finished:', step);
-      },
     });
 
-    // Return UIMessage stream response (AI SDK v5)
+    // Return UIMessage stream response
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Chat API error:", error);

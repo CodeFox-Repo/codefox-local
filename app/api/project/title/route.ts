@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProjectManager } from '@/lib/project-manager';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
 const projectManager = ProjectManager.getInstance();
 
-const openrouter = createOpenRouter({
+const openrouter = createOpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
 async function buildTitle(prompt: string): Promise<string | null> {
   if (!prompt) return null;
+  // Title generation stays on OpenRouter; without a key it degrades to no title.
+  if (!process.env.OPENROUTER_API_KEY) return null;
 
   try {
     const result = await generateText({

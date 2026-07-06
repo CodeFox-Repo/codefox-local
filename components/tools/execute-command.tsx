@@ -1,6 +1,16 @@
 import { Terminal, CheckCircle2, XCircle } from "lucide-react";
-import type { ExecuteCommandInput, ExecuteCommandOutput } from "@/lib/tool-definitions";
 import type { RenderResult } from "./types";
+
+// Local types: the executeCommand tool schema was removed from
+// lib/tool-definitions, but historical messages still render these parts.
+type ExecuteCommandInput = { command: string; keepAlive?: boolean };
+type ExecuteCommandOutput = {
+  success?: boolean;
+  previewUrl?: string;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+};
 
 export function renderToolExecuteCommand({
   input,
